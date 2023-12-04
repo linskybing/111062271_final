@@ -7,9 +7,9 @@
       "request": "launch",
       "args": [],
       "stopAtEntry": false,
-      "externalConsole": true,
-      "cwd": "c:/Users/LIN/Desktop/111062271_final_project",
-      "program": "c:/Users/LIN/Desktop/111062271_final_project/build/Debug/outDebug",
+      "externalConsole": false,
+      "cwd": "/Users/linbinghong/Desktop/111062271_final",
+      "program": "/Users/linbinghong/Desktop/111062271_final/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
