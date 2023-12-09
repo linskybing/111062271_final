@@ -27,7 +27,7 @@ void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	/* Store your output graph and multicast tree into G and MTid */
 	
 	/* Write your code here. */
-
+	
 	return;
 }
 
