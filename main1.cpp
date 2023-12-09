@@ -84,7 +84,9 @@ int main(void) {
 			Set D;
 			insert_input(id, s, t, D, input_string);
 			P1.insert(id, s, D, t, G, T);
-
+			F.trees.push_back(T);
+			F.size++;
+			P1.printTree(id, F);
 		}
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);

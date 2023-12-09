@@ -2,6 +2,7 @@
 #ifndef PROBLEM1_H
 #define PROBLEM1_H
 #include <queue>
+#include "basicDS.h"
 
 class DSU {    
     private:
@@ -42,11 +43,14 @@ class DSU {
         }
 };
 
-struct Compare {
-    bool operator () (const struct graphEdge &lhs, const struct graphEdge &rhs) {
-        return lhs.ce > rhs.ce;
-    }
+struct sortEdge
+{
+    graphEdge e; // edge int graph
+    int index; // the index of edge in graph
 };
 
+bool Compare(sortEdge left, sortEdge right) {
+    return left.e.ce < right.e.ce;
+}
 
 #endif
