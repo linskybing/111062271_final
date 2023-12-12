@@ -87,10 +87,11 @@ int main(void) {
 			F.trees.push_back(T);
 			F.size++;
 			P1.printTree(id, F);
+			P1.printGraph(G);
 		}
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);
-			P1.stop(id, G, F);
+			//P1.stop(id, G, F);
 
 		}
 		else if (input_string[0] == 'r') {

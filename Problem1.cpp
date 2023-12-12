@@ -15,20 +15,27 @@ class Problem1 {
 		void insert(int id, int s, Set D, int t, Graph &G, Tree &MTid);
 		void stop(int id, Graph &G, Forest &MTidForest);
 		void rearrange(Graph &G, Forest &MTidForest);
+		void addEdge(Graph &G, Tree& MTid, edgeList it);
+		void release(Graph &G, Tree &MTid);
 		void printTree(int id, Forest MTidForest);
 		void printAdj();
+		void printGraph(Graph G);
 	private:
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
 		int** vetexCotain; // store the vertex already in multicast tree
+		int* bandwidth;
 };
 
 Problem1::Problem1(Graph G) {
 	
 	adjList = new vector<edgeList>[G.V.size()];
 	vetexCotain = new int*[G.V.size()];
+	bandwidth = new int[G.V.size()];
+
 	size = G.V.size();
 	for (int i = 0; i < G.E.size(); i++) {
+		// undirected graph
 		edgeList t = {i, G.E[i].vertex[1], G.E[i].ce};
 		edgeList t2 = {i, G.E[i].vertex[0], G.E[i].ce};
 		adjList[G.E[i].vertex[0] - 1].push_back(t);
@@ -36,14 +43,17 @@ Problem1::Problem1(Graph G) {
 	}
 
 	for (int i = 0; i < G.V.size(); i++) {
-		vetexCotain[i] = new int[G.V.size()];
+		// sort the adjlist edge by cost
+		sort(adjList[i].begin(), adjList[i].end(), Compare);
 
+		// initialize the multicastree whether contains the vertex
+		vetexCotain[i] = new int[G.V.size()];
 		for (int j = 0; j < G.V.size(); j++) {
-			vetexCotain[i][j] = 0;
-			if (i == j) {
-				vetexCotain[i][j] = 1;
-			}
+			vetexCotain[i][j] = -1;
 		}
+
+		// initial bandwith
+		bandwidth[i] = 0;
 	}
 
 	//printAdj();
@@ -58,6 +68,47 @@ Problem1::~Problem1() {
 
 	delete [] adjList;
 	delete [] vetexCotain;
+	delete [] bandwidth;
+}
+
+void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e) {
+
+	// record index
+	vetexCotain[MTid.s-1][e.dest-1] = e.index;
+	treeEdge te;
+	if (e.dest == G.E[e.index].vertex[0]) {
+		te.vertex[0] = G.E[e.index].vertex[1];
+		te.vertex[1] = G.E[e.index].vertex[0];
+	}
+	else {
+		te.vertex[0] = G.E[e.index].vertex[0];
+		te.vertex[1] = G.E[e.index].vertex[1];
+	}
+	//add the edge to tree
+	MTid.E.push_back(te);
+	MTid.ct += e.cost;
+
+	// update bandwith
+	G.E[e.index].b -= bandwidth[MTid.s-1];
+
+	return;
+}
+
+void Problem1::release(Graph& G, Tree& MTid) {
+	for (auto it = MTid.E.begin(); it < MTid.E.end(); it++) {
+		// release bandwith
+		G.E[vetexCotain[MTid.s-1][it->vertex[1]]].b += bandwidth[MTid.s-1];
+
+		// clear tree information
+		vetexCotain[MTid.s-1][it->vertex[1]] = -1;
+	}
+
+	bandwidth[MTid.s-1] = 0; // clean the multicast bandwith
+
+	MTid.E.clear();
+	MTid.V.clear();
+
+	return;
 }
 
 void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
@@ -73,6 +124,10 @@ void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 
 	int n = D.size - 1; // how many the number of edge needed
 	s--;
+
+	// store multicast tree cost
+	bandwidth[s] = t;
+
 	// using prime's algorithm
 	// initialize distance table
 	priority_queue<edgeList, vector<edgeList>, cmp> pq;
@@ -85,24 +140,18 @@ void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 
 	while (n && !pq.empty()) {
 		edgeList e = pq.top(); pq.pop();
+
 		int i = e.dest-1;
+		if (vetexCotain[s][i] != -1) continue;
 
-		if (vetexCotain[s][i]) continue;
-		
-		// select edge
-		vetexCotain[s][i] = 1;
-		treeEdge te = {{G.E[e.index].vertex[0], G.E[e.index].vertex[1]}};
-		temp.E.push_back(te);
-		temp.ct += e.cost;
+		addEdge(G, temp, e);
 
-		// update bandwith
-		G.E[e.index].b -= t;
 		n--;
 
 		// adjoint edge check
 		vector<edgeList>::iterator it = adjList[i].begin();
 		for (; it < adjList[i].end(); it++) {
-			if (!vetexCotain[s][it->dest-1] && G.E[it->index].b >= t) {
+			if (vetexCotain[s][it->dest-1] == -1 && G.E[it->index].b >= t) {
 				pq.push(*it);
 			}
 		}
@@ -116,7 +165,42 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 	/* Store your output graph and multicast tree forest into G and MTidForest
 	   Note: Please "only" include mutlicast trees that you added nodes in MTidForest. */
 	
-	/* Write your code here. */
+	// find the multicast tree index
+	int i = 0;
+	for (; i < MTidForest.size && MTidForest.trees[i].id != id; i++);
+	
+	if (i == MTidForest.size) return;
+
+	// release resource
+	release(G, MTidForest.trees[i]);
+
+	// remove tree
+	MTidForest.trees.erase(MTidForest.trees.begin() + i);
+	MTidForest.size--;
+
+	// add more node to other multicast tree
+	for (int i = 0; i < MTidForest.size; i++) {
+		// already contain all vertex
+		if (MTidForest.trees[i].V.size() == size) continue;
+
+		int source = MTidForest.trees[i].s-1;
+		for (int j = 0; j < size; j++) {
+			// already contain this vertex
+			if (source == j || vetexCotain[source][j] != -1) continue;
+
+			// not contain vetex
+			// select the least cost edge from adjlist
+			// due to already sort, so select first fit edge
+			for (auto it = adjList[j].begin(); it < adjList[j].end(); it++) {
+
+				// select the destination vertex has aleady contain in tree
+				// and remain bandwidth is satisfy
+				if (vetexCotain[source][it->dest-1] != -1 && G.E[it->index].b >= bandwidth[source]) {
+					addEdge(G, MTidForest.trees[i], *it);
+				}
+			}
+		}
+	}
 
 	return;
 }
@@ -126,6 +210,11 @@ void Problem1::rearrange(Graph &G, Forest &MTidForest) {
 	   Note: Please include "all" active mutlicast trees in MTidForest. */
 
 	/* Write your code here. */
+	// release all resouce
+	for (int i = 0; i < MTidForest.size; i++) {
+		release(G, MTidForest.trees[i]);
+	}
+
 	
 	return;
 }
@@ -135,7 +224,7 @@ void Problem1::printTree(int id, Forest MTidForest) {
 	int index = 0;
 	for (; index < MTidForest.size && MTidForest.trees[index].id != id; index++);
 	if (index >= MTidForest.size) return;
-
+	std::cout << "===   [" << id << "]    ===\n";
 	// print the tree information
 	Tree t = MTidForest.trees[index];
 	std::cout << "source: " << t.s << "\n";
@@ -149,17 +238,26 @@ void Problem1::printTree(int id, Forest MTidForest) {
 		std::cout << edge.vertex[0] << " " << edge.vertex[1] << "\n";
 	}
 	std::cout << "total cost: " << t.ct << "\n\n";
-
+	std::cout << "=======End======\n";
 	return;
 }
 
 void Problem1::printAdj() {
+	std::cout << "====AdjList====\n";
 	for (int i = 0; i < size; i++) {
 		vector<edgeList>::iterator it;
 		for (it = adjList[i].begin(); it < adjList[i].end(); it++) {
 			std::cout << i+1 << " " << it->dest << " " << it->cost << std::endl;
 		}
 	}
-
+	std::cout << "================\n";
 	std::cout << std::endl;
+}
+
+void Problem1::printGraph(Graph G) {
+	std::cout << "===Graph Edge===\n";
+	for (auto it = G.E.begin(); it < G.E.end(); it++) {
+		std::cout << it->vertex[0] << " " << it->vertex[1] << ": " << it->b << "/" << it->ce << "\n";
+	}
+	std::cout << "=======End======\n";
 }
