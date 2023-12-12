@@ -86,8 +86,8 @@ int main(void) {
 			P1.insert(id, s, D, t, G, T);
 			F.trees.push_back(T);
 			F.size++;
-			//P1.printTree(id, F);
-			//P1.printGraph(G);
+			P1.printTree(id, F);
+			P1.printGraph(G);
 		}
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);
@@ -96,8 +96,8 @@ int main(void) {
 		}
 		else if (input_string[0] == 'r') {
 			P1.rearrange(G, F);
-			P1.printForest(F);
-			P1.printGraph(G);
+			//P1.printForest(F);
+			//P1.printGraph(G);
 		}
 	}
 	return 0;

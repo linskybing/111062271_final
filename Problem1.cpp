@@ -96,7 +96,7 @@ void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e, int bandw) {
 	}
 	//add the edge to tree
 	MTid.E.push_back(te);
-	MTid.ct += e.cost;
+	MTid.ct += e.cost * bandw;
 
 	// update bandwith
 	G.E[e.index].b -= bandw;
