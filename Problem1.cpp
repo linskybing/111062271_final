@@ -20,6 +20,7 @@ class Problem1 {
 		void addEdge(Graph &G, Tree& MTid, edgeList it, int bandw); // add an edge to MTid
 		void release(Graph &G, Tree &MTid, const int& bandw); // release MTid resource
 		void allocate(Graph &G, Tree &MTid, const int& s, const int& t, int& need); // allocate resource to MTid
+		void allocateAddiction(Graph &G, Tree &MTid, const int& s, int& need, const int& vi);
 		int getBandwith(const int& s, const int& id);
 		int getContainIndex(const int& s, const int& id);
 		void printTree(int id, Forest MTidForest);
@@ -102,7 +103,6 @@ void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e, int bandw) {
 	//add the edge to tree
 	MTid.E.push_back(te);
 	MTid.ct += e.cost * bandw;
-
 	// update bandwith
 	G.E[e.index].b -= bandw;
 
@@ -116,8 +116,10 @@ void Problem1::release(Graph& G, Tree& MTid, const int& bandw) {
 		index = getContainIndex(MTid.s-1, MTid.id);
 		G.E[contain[MTid.s-1][index].vertex[it->vertex[1]-1]].b += bandw;
 
+		// clean tree information
+		contain[MTid.s-1][index].vertex[it->vertex[1]-1] = -1;
 	}
-	contain[MTid.s-1].erase(index)
+
 	MTid.ct = 0;
 	MTid.E.clear();
 	return;
@@ -158,6 +160,45 @@ void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& n
 	return;
 }
 
+void Problem1::allocateAddiction(Graph& G, Tree& MTid, const int& s, int& need, const int& vi) {
+	// using prime's algorithm with priority queue
+
+	priority_queue<edgeList, vector<edgeList>, cmp> pq;
+
+	int bandw = bandwidth[s][getBandwith(s, MTid.id)].second;
+
+	for (int i = 0; i < size; i++) {
+		if (contain[s][vi].vertex[i] == -1) continue;
+		// push the edge of the adjoint node that the terminal node point at
+		for (auto it = adjList[i].begin(); it < adjList[i].end(); it++) {
+			if (G.E[it->index].b >= bandw && contain[s][vi].vertex[it->dest-1] == -1) {
+				pq.push(*it);
+			}
+		}
+	}
+
+	while (need && !pq.empty()) {
+		edgeList e = pq.top(); pq.pop();
+
+		int i = e.dest-1;
+		if (contain[s][vi].vertex[i] != -1) continue;
+
+		addEdge(G, MTid, e, bandw);
+
+		need--;
+
+		// adjoint edge check
+		vector<edgeList>::iterator it = adjList[i].begin();
+		for (; it < adjList[i].end(); it++) {
+			if (it->dest-1 != s && contain[s][vi].vertex[it->dest-1] == -1 && G.E[it->index].b >= bandw) {
+				pq.push(*it);
+			}
+		}
+	}
+
+	return;
+}
+
 void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 
 	/* Store your output graph and multicast tree into G and MTid */
@@ -178,9 +219,9 @@ void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	Contain t_c;
 	t_c.id = id;
 	for (int i = 0; i < size; i++) {
-		t_c.vertex[i] = -1;
+		t_c.vertex.push_back(-1);
 	}
-
+	t_c.vertex[s] = -2;
 	contain[s].push_back(t_c);
 
 	// allocate resource
@@ -204,37 +245,31 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 	// release resource
 	int s = MTidForest.trees[i].s-1;
 	int index = getBandwith(s, id);
+	int vi = getContainIndex(s, id);
 	release(G, MTidForest.trees[i], bandwidth[s][index].second);
 	MTidForest.trees[i].V.clear();
+
 	// remove tree
+	contain[s].erase(contain[s].begin() + vi);
 	bandwidth[s].erase(bandwidth[s].begin() + index); // clean the multicast bandwith
 	MTidForest.trees.erase(MTidForest.trees.begin() + i);
 	MTidForest.size--;
 
-	int vi = getContainIndex(s, id);
 	// add more node to other multicast tree
 	for (int i = 0; i < MTidForest.size; i++) {
-		// already contain all vertex
-		if (MTidForest.trees[i].V.size() == size) continue;
+
+		vi = getContainIndex(MTidForest.trees[i].s-1, MTidForest.trees[i].id);
 
 		int source = MTidForest.trees[i].s-1;
-		for (int j = 0; j < size; j++) {
-			// already contain this vertex
-			if (source == j || contain[source][vi].vertex[j] != -1) continue;
 
-			// not contain vetex
-			// select the least cost edge from adjlist
-			// due to already sort, so select first fit edge
-			for (auto it = adjList[j].begin(); it < adjList[j].end(); it++) {
-
-				// select the destination vertex has aleady contain in tree
-				// and remain bandwidth is satisfy
-				int bandw = bandwidth[source][getBandwith(source, MTidForest.trees[i].id)].second;
-				if (contain[source][vi].vertex[it->dest-1] != -1 && G.E[it->index].b >= bandw) {
-					addEdge(G, MTidForest.trees[i], *it, bandw);
-				}
-			}
+		// count the number that has been in the tree (should be optimal)
+		int count = 0;
+		for (int i = 0; i < contain[source][vi].vertex.size(); i++) {
+			if (contain[source][vi].vertex[i] != -1) count++;
 		}
+		if (count == size) continue;
+		int need = size - count;
+		allocateAddiction(G, MTidForest.trees[i], source, need, vi);
 	}
 
 	return;
@@ -244,7 +279,6 @@ void Problem1::rearrange(Graph &G, Forest &MTidForest) {
 	/* Store your output graph and multicast tree forest into G and MTidForest
 	   Note: Please include "all" active mutlicast trees in MTidForest. */
 
-	/* Write your code here. */
 	// release all resouce
 	int s, id, t, n;
 	for (int i = 0; i < MTidForest.size; i++) {
