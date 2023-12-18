@@ -1,16 +1,23 @@
 #include "basicDS.h"
-
-/* You can add more functions or variables in each class. 
-   But you "Shall Not" delete any functions or variables that TAs defined. */
+#include "Problem1.h"
+#include <iostream>
+#include <queue>
+#include <utility>
+#include <algorithm>
 
 class Problem2 {
-public:
+	public:
+		Problem2(Graph G);  //constructor
+		~Problem2();        //destructor
+		bool insert(int id, int s, Set D, int t, Graph &G, Tree &MTid);
+		void stop(int id, Graph &G, Forest &MTidForest);
+		void rearrange(Graph &G, Forest &MTidForest);
 
-	Problem2(Graph G);  //constructor
-	~Problem2();        //destructor
-	bool insert(int id, int s, Set D, int t, Graph &G, Tree &MTid);
-	void stop(int id, Graph &G, Forest &MTidForest);
-	void rearrange(Graph &G, Forest &MTidForest);
+	private:
+		int size;
+		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
+		int** vetexCotain; // store the vertex already in multicast tree
+		vector<vector<bpair>> bandwidth;
 };
 
 Problem2::Problem2(Graph G) {

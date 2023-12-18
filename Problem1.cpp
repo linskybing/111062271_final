@@ -5,7 +5,8 @@
 #include <utility>
 #include <algorithm>
 
-typedef std::pair<int, int> bpair;
+#define bpair pair<int, int>
+
 /* You can add more functions or variables in each class. 
    But you "Shall Not" delete any functions or variables that TAs defined. */
 
@@ -20,6 +21,7 @@ class Problem1 {
 		void release(Graph &G, Tree &MTid, const int& bandw); // release MTid resource
 		void allocate(Graph &G, Tree &MTid, const int& s, const int& t, int& need); // allocate resource to MTid
 		int getBandwith(const int& s, const int& id);
+		int getContainIndex(const int& s, const int& id);
 		void printTree(int id, Forest MTidForest);
 		void printAdj(); // print the AdjList
 		void printGraph(Graph G); // print the Graph
@@ -28,14 +30,13 @@ class Problem1 {
 	private:
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
-		int** vetexCotain; // store the vertex already in multicast tree
+		vector<vector<Contain>> contain; // key: id value: 1D array
 		vector<vector<bpair>> bandwidth;
 };
 
 Problem1::Problem1(Graph G) {
 	
 	adjList = new vector<edgeList>[G.V.size()];
-	vetexCotain = new int*[G.V.size()];
 	size = G.V.size();
 	for (int i = 0; i < G.E.size(); i++) {
 		// undirected graph
@@ -48,43 +49,46 @@ Problem1::Problem1(Graph G) {
 	for (int i = 0; i < G.V.size(); i++) {
 		// sort the adjlist edge by cost
 		sort(adjList[i].begin(), adjList[i].end(), Compare);
-
-		// initialize the multicastree whether contains the vertex
-		vetexCotain[i] = new int[G.V.size()];
-		for (int j = 0; j < G.V.size(); j++) {
-			vetexCotain[i][j] = -1;
-		}
 	}
+	contain.reserve(size);
 	bandwidth.reserve(size);
 
 	//printAdj();
 }
 
 Problem1::~Problem1() {
-	/* Write your code here. */
+
 	for (int i = 0; i < size; i++) {
 		adjList[i].clear();
 		bandwidth[i].clear();
-		delete [] vetexCotain[i];
+		contain[i].clear();
 	}
 
 	delete [] adjList;
-	delete [] vetexCotain;
+
+	contain.clear();
 	bandwidth.clear();
 }
 
 int Problem1::getBandwith(const int& s,const int& id) {
 	for (int i = 0; i < bandwidth[s].size(); i++) {
-		auto [bid, bandw] = bandwidth[s][i];
 		if (bandwidth[s][i].first == id) return i;
 	}
 	return -1;
 }
 
+int Problem1::getContainIndex(const int& source, const int& id) {
+	int i;
+	for (i = 0; i < contain[source].size() && contain[source][i].id != id; i++);
+	return i;
+}
+
 void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e, int bandw) {
 
 	// record index
-	vetexCotain[MTid.s-1][e.dest-1] = e.index;
+	int index = getContainIndex(MTid.s-1, MTid.id);
+	contain[MTid.s-1][index].vertex[e.dest-1] = e.index;
+
 	treeEdge te;
 	if (e.dest == G.E[e.index].vertex[0]) {
 		te.vertex[0] = G.E[e.index].vertex[1];
@@ -94,6 +98,7 @@ void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e, int bandw) {
 		te.vertex[0] = G.E[e.index].vertex[0];
 		te.vertex[1] = G.E[e.index].vertex[1];
 	}
+
 	//add the edge to tree
 	MTid.E.push_back(te);
 	MTid.ct += e.cost * bandw;
@@ -105,14 +110,14 @@ void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e, int bandw) {
 }
 
 void Problem1::release(Graph& G, Tree& MTid, const int& bandw) {
+	int index;
 	for (auto it = MTid.E.begin(); it < MTid.E.end(); it++) {
 		// release bandwith
-		G.E[vetexCotain[MTid.s-1][it->vertex[1]-1]].b += bandw;
+		index = getContainIndex(MTid.s-1, MTid.id);
+		G.E[contain[MTid.s-1][index].vertex[it->vertex[1]-1]].b += bandw;
 
-		// clear tree information
-		vetexCotain[MTid.s-1][it->vertex[1]-1] = -1;
 	}
-
+	contain[MTid.s-1].erase(index)
 	MTid.ct = 0;
 	MTid.E.clear();
 	return;
@@ -129,11 +134,13 @@ void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& n
 		}
 	}
 
+	int index = getContainIndex(s, MTid.id);
+
 	while (need && !pq.empty()) {
 		edgeList e = pq.top(); pq.pop();
 
 		int i = e.dest-1;
-		if (vetexCotain[s][i] != -1) continue;
+		if (contain[s][index].vertex[i] != -1) continue;
 
 		addEdge(G, MTid, e, t);
 
@@ -142,7 +149,7 @@ void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& n
 		// adjoint edge check
 		vector<edgeList>::iterator it = adjList[i].begin();
 		for (; it < adjList[i].end(); it++) {
-			if (it->dest-1 != s && vetexCotain[s][it->dest-1] == -1 && G.E[it->index].b >= t) {
+			if (it->dest-1 != s && contain[s][index].vertex[it->dest-1] == -1 && G.E[it->index].b >= t) {
 				pq.push(*it);
 			}
 		}
@@ -168,9 +175,18 @@ void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	// store multicast tree cost
 	bandwidth[s].push_back(make_pair(id, t));
 
+	Contain t_c;
+	t_c.id = id;
+	for (int i = 0; i < size; i++) {
+		t_c.vertex[i] = -1;
+	}
+
+	contain[s].push_back(t_c);
+
 	// allocate resource
 	allocate(G, temp, s, t, n);
 
+	
 	MTid = temp;
 	return;
 }
@@ -195,6 +211,7 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 	MTidForest.trees.erase(MTidForest.trees.begin() + i);
 	MTidForest.size--;
 
+	int vi = getContainIndex(s, id);
 	// add more node to other multicast tree
 	for (int i = 0; i < MTidForest.size; i++) {
 		// already contain all vertex
@@ -203,7 +220,7 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 		int source = MTidForest.trees[i].s-1;
 		for (int j = 0; j < size; j++) {
 			// already contain this vertex
-			if (source == j || vetexCotain[source][j] != -1) continue;
+			if (source == j || contain[source][vi].vertex[j] != -1) continue;
 
 			// not contain vetex
 			// select the least cost edge from adjlist
@@ -213,7 +230,7 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 				// select the destination vertex has aleady contain in tree
 				// and remain bandwidth is satisfy
 				int bandw = bandwidth[source][getBandwith(source, MTidForest.trees[i].id)].second;
-				if (vetexCotain[source][it->dest-1] != -1 && G.E[it->index].b >= bandw) {
+				if (contain[source][vi].vertex[it->dest-1] != -1 && G.E[it->index].b >= bandw) {
 					addEdge(G, MTidForest.trees[i], *it, bandw);
 				}
 			}

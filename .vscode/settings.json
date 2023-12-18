@@ -58,6 +58,18 @@
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
     "new": "cpp",
-    "vector": "cpp"
-  }
+    "vector": "cpp",
+    "cstdint": "cpp",
+    "deque": "cpp",
+    "xstring": "cpp",
+    "initializer_list": "cpp",
+    "xutility": "cpp",
+    "atomic": "cpp",
+    "ios": "cpp",
+    "system_error": "cpp",
+    "xiosbase": "cpp",
+    "queue": "cpp",
+    "type_traits": "cpp"
+  },
+  "C_Cpp.errorSquiggles": "disabled"
 }
