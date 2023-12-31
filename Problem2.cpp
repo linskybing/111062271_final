@@ -14,7 +14,7 @@ class Problem2 {
 		bool insert(int id, int s, Set D, int t, Graph &G, Tree &MTid);
 		void stop(int id, Graph &G, Forest &MTidForest);
 		void rearrange(Graph &G, Forest &MTidForest);
-		void dijkstra(Graph &G, Tree &MTid, Metric& metric ,const int& s, const int& t);
+		void dijkstra(Graph &G, Tree &MTid, Metric& metric , int s, const int& t);
 		void shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t); // metric closure
 		int getBandwith(const int& s, const int& id);
 		int getContainIndex(const int& s, const int& id);
@@ -82,10 +82,9 @@ int Problem2::getContainIndex(const int& source, const int& id) {
 }
 
 
-void Problem2::dijkstra(Graph &G, Tree &MTid, Metric& metric ,const int& s, const int& t) {
+void Problem2::dijkstra(Graph &G, Tree &MTid, Metric& metric , int s, const int& t) {
 	priority_queue<bpair, vector<bpair>, greater<bpair>> pq;
 	s--;
-
 	for (int i = 0; i < size; i++) {
 		metric.distance[s][i] = INF;
 	}
@@ -138,7 +137,6 @@ void Problem2::printShortest(Graph& G, Tree &MTid, Metric& metric) {
 		i--;
 		std::cout << "===From [" << i+1 << "] ===\n";
 		for (int j = 0; j < G.V.size(); j++) {
-			for (int k = 0; k < G.V
 			std::cout << i+1 << " " << j+1 <<  " : " << metric.distance[i][j] << "\n";
 		}
 		std::cout << "=======End======\n";
