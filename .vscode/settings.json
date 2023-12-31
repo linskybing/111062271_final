@@ -117,7 +117,12 @@
     "typeinfo": "cpp",
     "unordered_map": "cpp",
     "variant": "cpp",
-    "algorithm": "cpp"
+    "algorithm": "cpp",
+    "compare": "cpp",
+    "xstddef": "cpp",
+    "utility": "cpp",
+    "xlocinfo": "cpp",
+    "*.tcc": "cpp"
   },
   "C_Cpp.errorSquiggles": "disabled"
 }

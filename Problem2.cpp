@@ -6,7 +6,7 @@
 #include <algorithm>
 
 #define bpair pair<int, int>
-
+#define INF 1000
 class Problem2 {
 	public:
 		Problem2(Graph G);  //constructor
@@ -14,8 +14,8 @@ class Problem2 {
 		bool insert(int id, int s, Set D, int t, Graph &G, Tree &MTid);
 		void stop(int id, Graph &G, Forest &MTidForest);
 		void rearrange(Graph &G, Forest &MTidForest);
-		void tempGraph(Graph &G, Graph &temp, const int& t);
-		void shortestPath(Graph &G, Tree &MTid); // metric closure
+		void dijkstra(Graph &G, Tree &MTid, Metric& metric ,const int& s, const int& t);
+		void shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t); // metric closure
 		int getBandwith(const int& s, const int& id);
 		int getContainIndex(const int& s, const int& id);
 		void printTree(int id, Forest MTidForest);
@@ -23,6 +23,7 @@ class Problem2 {
 		void printGraph(Graph G); // print the Graph
 		void printForest(Forest F); // print all of the MTid
 		void printBandwid();
+		void printShortest(Graph& G, Tree &MTid, Metric& metric);
 	private:
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
@@ -67,8 +68,81 @@ Problem2::~Problem2() {
 
 }
 
-void Problem2::shortestPath(Graph &G, Tree &MTid) {
-	
+int Problem2::getBandwith(const int& s,const int& id) {
+	for (int i = 0; i < bandwidth[s].size(); i++) {
+		if (bandwidth[s][i].first == id) return i;
+	}
+	return -1;
+}
+
+int Problem2::getContainIndex(const int& source, const int& id) {
+	int i;
+	for (i = 0; i < contain[source].size() && contain[source][i].id != id; i++);
+	return i;
+}
+
+
+void Problem2::dijkstra(Graph &G, Tree &MTid, Metric& metric ,const int& s, const int& t) {
+	priority_queue<bpair, vector<bpair>, greater<bpair>> pq;
+	s--;
+
+	for (int i = 0; i < size; i++) {
+		metric.distance[s][i] = INF;
+	}
+
+	metric.distance[s][s] = 0;
+
+	pq.push({0, s});
+
+	while(!pq.empty()) {
+		int u = pq.top().second;
+		int dist_u = pq.top().first;
+		pq.pop();
+
+		for (auto edge : adjList[u]) {
+			int v = edge.dest-1;
+
+			if (dist_u + edge.cost < metric.distance[s][v]) {
+				metric.distance[s][v] = dist_u + edge.cost;
+				metric.edges[s][v] = edge;
+				pq.push({metric.distance[s][v], v});
+			}
+		}
+
+	}
+}
+
+void Problem2::shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t) {
+
+	// initilize
+	metric.distance = new int*[size];
+	metric.edges = new edgeList*[size];
+
+	for (int i = 0; i < G.V.size(); i++) {
+		metric.distance[i] = new int[size];
+		metric.edges[i] = new edgeList[size];
+	}
+
+	// find all shortestPath
+
+	for (auto i : MTid.V) {
+		dijkstra(G, MTid, metric, i, t);
+	}
+
+	printShortest(G, MTid, metric);
+}
+
+void Problem2::printShortest(Graph& G, Tree &MTid, Metric& metric) {
+
+	for (auto i : MTid.V) {
+		i--;
+		std::cout << "===From [" << i+1 << "] ===\n";
+		for (int j = 0; j < G.V.size(); j++) {
+			for (int k = 0; k < G.V
+			std::cout << i+1 << " " << j+1 <<  " : " << metric.distance[i][j] << "\n";
+		}
+		std::cout << "=======End======\n";
+	}
 }
 
 bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
@@ -76,7 +150,8 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	
 	/* Write your code here. */
 	Tree t_MTid;
-
+	Metric metric;
+	
 	// initial vertex
 	for (int i = 0; i < D.size; i++) {
 		t_MTid.V.push_back(D.destinationVertices[i]);
@@ -86,7 +161,10 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	t_MTid.id = id;
 	t_MTid.ct = 0;
 
+	// store multicast tree cost
+	bandwidth[s].push_back(make_pair(id, t));
 
+	shortestPath(t_G, t_MTid, metric, t);
 	/* You should return true or false according the insertion result */
 	return true;
 }

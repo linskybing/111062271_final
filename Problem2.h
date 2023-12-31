@@ -25,4 +25,9 @@ struct cmp {
     }
 };
 
+struct Metric {
+    int** distance;
+    edgeList** edges;
+};
+
 #endif
