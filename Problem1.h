@@ -1,7 +1,6 @@
 
 #ifndef PROBLEM1_H
 #define PROBLEM1_H
-#include <queue>
 #include "basicDS.h"
 
 struct edgeList

@@ -1,7 +1,6 @@
 
 #ifndef PROBLEM2_H
 #define PROBLEM2_H
-#include <queue>
 #include "basicDS.h"
 
 struct edgeList
@@ -9,6 +8,11 @@ struct edgeList
     int index; // the index of edge in graph
     int dest; // the edge adjoint in
     int cost; // the cost of edge
+};
+
+struct Contain {
+    int id; // the id of tree
+    vector<int> vertex; // the index of the vertex
 };
 
 bool Compare(edgeList left, edgeList right) {
