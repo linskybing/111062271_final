@@ -14,6 +14,8 @@ class Problem2 {
 		bool insert(int id, int s, Set D, int t, Graph &G, Tree &MTid);
 		void stop(int id, Graph &G, Forest &MTidForest);
 		void rearrange(Graph &G, Forest &MTidForest);
+		void tempGraph(Graph &G, Graph &temp, const int& t);
+		void shortestPath(Graph &G, Tree &MTid); // metric closure
 		int getBandwith(const int& s, const int& id);
 		int getContainIndex(const int& s, const int& id);
 		void printTree(int id, Forest MTidForest);
@@ -24,8 +26,10 @@ class Problem2 {
 	private:
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
-		int** vetexCotain; // store the vertex already in multicast tree
+		vector<vector<Contain>> contain; // key: id value: 1D array
 		vector<vector<bpair>> bandwidth;
+		Graph t_G;
+		Forest t_F;
 };
 
 Problem2::Problem2(Graph G) {
@@ -45,6 +49,8 @@ Problem2::Problem2(Graph G) {
 	}
 	contain.reserve(size);
 	bandwidth.reserve(size);
+
+	t_G = G;
 }
 
 Problem2::~Problem2() {
@@ -61,10 +67,24 @@ Problem2::~Problem2() {
 
 }
 
+void Problem2::shortestPath(Graph &G, Tree &MTid) {
+	
+}
+
 bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	/* Store your output graph and multicast tree into G and MTid */
 	
 	/* Write your code here. */
+	Tree t_MTid;
+
+	// initial vertex
+	for (int i = 0; i < D.size; i++) {
+		t_MTid.V.push_back(D.destinationVertices[i]);
+	}
+
+	t_MTid.s = s;
+	t_MTid.id = id;
+	t_MTid.ct = 0;
 
 
 	/* You should return true or false according the insertion result */
@@ -89,7 +109,7 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 	return;
 }
 
-void Problem1::printTree(int id, Forest MTidForest) {
+void Problem2::printTree(int id, Forest MTidForest) {
 	// find the tree in MTidForest by id
 	int index = 0;
 	for (; index < MTidForest.size && MTidForest.trees[index].id != id; index++);
@@ -112,7 +132,7 @@ void Problem1::printTree(int id, Forest MTidForest) {
 	return;
 }
 
-void Problem1::printAdj() {
+void Problem2::printAdj() {
 	std::cout << "====AdjList====\n";
 	for (int i = 0; i < size; i++) {
 		vector<edgeList>::iterator it;
@@ -124,7 +144,7 @@ void Problem1::printAdj() {
 	std::cout << std::endl;
 }
 
-void Problem1::printGraph(Graph G) {
+void Problem2::printGraph(Graph G) {
 	std::cout << "===Graph Edge===\n";
 	for (auto it = G.E.begin(); it < G.E.end(); it++) {
 		std::cout << it->vertex[0] << " " << it->vertex[1] << ": " << it->b << "/" << it->ce << "\n";
@@ -132,13 +152,13 @@ void Problem1::printGraph(Graph G) {
 	std::cout << "=======End======\n";
 }
 
-void Problem1::printForest(Forest F) {
+void Problem2::printForest(Forest F) {
 	for (int i = 0; i < F.size; i++) {
 		printTree(F.trees[i].id, F);
 	}
 }
 
-void Problem1::printBandwid() {
+void Problem2::printBandwid() {
 	for (int i = 0; i < size; i++) {
 		std::cout << "vertex " << i+1 << ":\n";
 		for (auto it = bandwidth[i].begin(); it < bandwidth[i].end(); it++) {

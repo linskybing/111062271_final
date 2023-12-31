@@ -33,6 +33,8 @@ class Problem1 {
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
 		vector<vector<Contain>> contain; // key: id value: 1D array
 		vector<vector<bpair>> bandwidth;
+		Graph t_G;
+		Forest t_F;
 };
 
 Problem1::Problem1(Graph G) {
@@ -54,6 +56,7 @@ Problem1::Problem1(Graph G) {
 	contain.reserve(size);
 	bandwidth.reserve(size);
 
+	t_G = G;
 	//printAdj();
 }
 
@@ -225,10 +228,14 @@ void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	contain[s].push_back(t_c);
 
 	// allocate resource
-	allocate(G, temp, s, t, n);
+	allocate(t_G, temp, s, t, n);
 
 	
 	MTid = temp;
+
+	G = t_G;
+	t_F.trees.push_back(temp);
+	t_F.size++;
 	return;
 }
 
@@ -238,29 +245,29 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 	
 	// find the multicast tree index
 	int i = 0;
-	for (; i < MTidForest.size && MTidForest.trees[i].id != id; i++);
+	for (; i < t_F.size && t_F.trees[i].id != id; i++);
 	
-	if (i == MTidForest.size) return;
+	if (i == t_F.size) return;
 
 	// release resource
-	int s = MTidForest.trees[i].s-1;
+	int s = t_F.trees[i].s-1;
 	int index = getBandwith(s, id);
 	int vi = getContainIndex(s, id);
-	release(G, MTidForest.trees[i], bandwidth[s][index].second);
-	MTidForest.trees[i].V.clear();
+	release(t_G, t_F.trees[i], bandwidth[s][index].second);
+	t_F.trees[i].V.clear();
 
 	// remove tree
 	contain[s].erase(contain[s].begin() + vi);
 	bandwidth[s].erase(bandwidth[s].begin() + index); // clean the multicast bandwith
-	MTidForest.trees.erase(MTidForest.trees.begin() + i);
-	MTidForest.size--;
+	t_F.trees.erase(t_F.trees.begin() + i);
+	t_F.size--;
 
 	// add more node to other multicast tree
-	for (int i = 0; i < MTidForest.size; i++) {
+	for (int i = 0; i < t_F.size; i++) {
 
-		vi = getContainIndex(MTidForest.trees[i].s-1, MTidForest.trees[i].id);
+		vi = getContainIndex(t_F.trees[i].s-1, t_F.trees[i].id);
 
-		int source = MTidForest.trees[i].s-1;
+		int source = t_F.trees[i].s-1;
 
 		// count the number that has been in the tree (should be optimal)
 		int count = 0;
@@ -269,9 +276,9 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 		}
 		if (count == size) continue;
 		int need = size - count;
-		allocateAddiction(G, MTidForest.trees[i], source, need, vi);
+		allocateAddiction(t_G, t_F.trees[i], source, need, vi);
 	}
-
+	G = t_G;
 	return;
 }
 
@@ -281,21 +288,22 @@ void Problem1::rearrange(Graph &G, Forest &MTidForest) {
 
 	// release all resouce
 	int s, id, t, n;
-	for (int i = 0; i < MTidForest.size; i++) {
-		s = MTidForest.trees[i].s-1;
-		id = MTidForest.trees[i].id;
+	for (int i = 0; i < t_F.size; i++) {
+		s = t_F.trees[i].s-1;
+		id = t_F.trees[i].id;
 		t = bandwidth[s][getBandwith(s, id)].second;
-		release(G, MTidForest.trees[i], t);
+		release(t_G, t_F.trees[i], t);
 	}
 
-	for (int i = 0; i < MTidForest.size; i++) {
-		s = MTidForest.trees[i].s-1;
-		id = MTidForest.trees[i].id;
+	for (int i = 0; i < t_F.size; i++) {
+		s = t_F.trees[i].s-1;
+		id = t_F.trees[i].id;
 		t = bandwidth[s][getBandwith(s, id)].second;
-		n = MTidForest.trees[i].V.size();
-		allocate(G, MTidForest.trees[i], s, t, n);
+		n = t_F.trees[i].V.size();
+		allocate(t_G, t_F.trees[i], s, t, n);
 	}
-
+	G = t_G;
+	MTidForest = t_F;
 	return;
 }
 
