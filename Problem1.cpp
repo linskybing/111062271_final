@@ -63,15 +63,14 @@ Problem1::Problem1(Graph G) {
 Problem1::~Problem1() {
 
 	for (int i = 0; i < size; i++) {
-		adjList[i].clear();
-		bandwidth[i].clear();
-		contain[i].clear();
+		vector<edgeList>().swap(adjList[i]);
+		vector<Contain>().swap(contain[i]);
+		vector<bpair>().swap(bandwidth[i]);
 	}
 
 	delete [] adjList;
-
-	contain.clear();
-	bandwidth.clear();
+	vector<vector<Contain>>().swap(contain);
+	vector<vector<bpair>>().swap(bandwidth);
 }
 
 int Problem1::getBandwith(const int& s,const int& id) {

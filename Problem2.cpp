@@ -11,20 +11,29 @@ class Problem2 {
 	public:
 		Problem2(Graph G);  //constructor
 		~Problem2();        //destructor
+
+		// main function
 		bool insert(int id, int s, Set D, int t, Graph &G, Tree &MTid);
 		void stop(int id, Graph &G, Forest &MTidForest);
 		void rearrange(Graph &G, Forest &MTidForest);
+
+		// sub function
 		void dijkstra(Tree &MTid, Metric& metric , int s, const int& t);
 		bool shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t); // metric closure
-		void addPath(Tree &MTid, Metric& metric, vector<bool>& contain, const int& d, const int& t);
-		bool MST(Tree &MTid, Metric& metric, const int& t);
+		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, const int& t); // from mst add path to MTid
+		bool MST(Tree &MTid, Metric& metric, const int& t); // find MST from metric closure
+
+		// get member variable
 		int getBandwith(const int& s, const int& id);
+
+		// output
 		void printTree(int id);
 		void printAdj(); // print the AdjList
 		void printGraph(Graph G); // print the Graph
 		void printForest(); // print all of the MTid
 		void printBandwid();
 		void printShortest(Graph& G, Tree &MTid, Metric& metric);
+
 	private:
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
@@ -55,13 +64,11 @@ Problem2::Problem2(Graph G) {
 
 Problem2::~Problem2() {
 	for (int i = 0; i < size; i++) {
-		adjList[i].clear();
-		bandwidth[i].clear();
+		vector<edgeList>().swap(adjList[i]);
+		vector<bpair>().swap(bandwidth[i]);
 	}
-
+	vector<vector<bpair>>().swap(bandwidth);
 	delete [] adjList;
-
-	bandwidth.clear();
 
 }
 
@@ -99,13 +106,24 @@ void Problem2::dijkstra(Tree &MTid, Metric& metric , int s, const int& t) {
 
 bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	// using prime's algorithm
-	vector<bool> contain(size, false);
-	vector<bool> contain_path(t_G.E.size(), false);
+	bool* contain = new bool[size];
+	bool* contain_path = new bool[t_G.E.size()];
 	priority_queue<bpair, vector<bpair>, greater<bpair>> pq;
+
+	// initilize
+	for (int i = 0; i < size; i++) {
+		contain[i] = false;
+	}
+
+	for (int i = 0; i < t_G.E.size(); i++) {
+		contain[i] = false;
+	}
 
 	int s = MTid.s-1;
 	contain[s] = true;
 	int need = MTid.V.size() - 1;
+
+	// prime's algorithm
 
 	for (auto v : MTid.V) {
 		if (metric.distance[s][v-1] != INF)
@@ -130,6 +148,10 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 		}
 	}
 
+	// free memonry
+	delete [] contain;
+	delete [] contain_path;
+
 	if (need){
 		MTid.E.clear();
 		MTid.ct = 0;
@@ -139,7 +161,7 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	return true; 
 }
 
-void Problem2::addPath(Tree &MTid, Metric& metric, vector<bool>& contain, const int& d, const int& t) {
+void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, const int& t) {
 	int parent = d;
 	int s = MTid.s-1;
 
@@ -168,12 +190,12 @@ void Problem2::addPath(Tree &MTid, Metric& metric, vector<bool>& contain, const 
 bool Problem2::shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t) {
 
 	// initilize
-	metric.distance.reserve(size);
-	metric.edges.reserve(size);
+	metric.distance = new int*[size];
+	metric.edges = new edgeList*[size];
 
 	for (int i = 0; i < size; i++) {
-		metric.distance[i].reserve(size);
-		metric.edges[i].reserve(size);
+		metric.distance[i] = new int[size];
+		metric.edges[i] = new edgeList[size];
 	}
 
 	// find all shortestPath
@@ -181,8 +203,18 @@ bool Problem2::shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t) 
 		dijkstra(MTid, metric, i, t);
 	}
 	// using the MST to construct path
-	return MST(MTid, metric, t);
+	bool result =  MST(MTid, metric, t);
 
+	// free memonry
+	for (int i = 0; i < size; i++) {
+		delete [] metric.distance[i];
+		delete [] metric.edges[i];
+	}
+
+	delete [] metric.distance;
+	delete [] metric.edges;
+
+	return result;
 }
 
 void Problem2::printShortest(Graph& G, Tree &MTid, Metric& metric) {
