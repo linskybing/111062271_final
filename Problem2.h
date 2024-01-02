@@ -26,8 +26,8 @@ struct cmp {
 };
 
 struct Metric {
-    int** distance;
-    edgeList** edges;
+    vector<vector<int>> distance;
+    vector<vector<edgeList>> edges;
 };
 
 #endif

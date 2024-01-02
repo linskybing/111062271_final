@@ -85,7 +85,6 @@ int main(void) {
             bool take;
 			insert_input(id, s, t, D, input_string);
 			take = P2.insert(id, s, D, t, G, T);
-			//P2.printGraph(G);
 		}
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);

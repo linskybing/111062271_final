@@ -122,7 +122,13 @@
     "xstddef": "cpp",
     "utility": "cpp",
     "xlocinfo": "cpp",
-    "*.tcc": "cpp"
+    "*.tcc": "cpp",
+    "functional": "cpp",
+    "iterator": "cpp",
+    "memory": "cpp",
+    "memory_resource": "cpp",
+    "numeric": "cpp",
+    "random": "cpp"
   },
   "C_Cpp.errorSquiggles": "disabled"
 }

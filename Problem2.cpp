@@ -14,20 +14,20 @@ class Problem2 {
 		bool insert(int id, int s, Set D, int t, Graph &G, Tree &MTid);
 		void stop(int id, Graph &G, Forest &MTidForest);
 		void rearrange(Graph &G, Forest &MTidForest);
-		void dijkstra(Graph &G, Tree &MTid, Metric& metric , int s, const int& t);
-		void shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t); // metric closure
+		void dijkstra(Tree &MTid, Metric& metric , int s, const int& t);
+		bool shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t); // metric closure
+		void addPath(Tree &MTid, Metric& metric, vector<bool>& contain, const int& d, const int& t);
+		bool MST(Tree &MTid, Metric& metric, const int& t);
 		int getBandwith(const int& s, const int& id);
-		int getContainIndex(const int& s, const int& id);
-		void printTree(int id, Forest MTidForest);
+		void printTree(int id);
 		void printAdj(); // print the AdjList
 		void printGraph(Graph G); // print the Graph
-		void printForest(Forest F); // print all of the MTid
+		void printForest(); // print all of the MTid
 		void printBandwid();
 		void printShortest(Graph& G, Tree &MTid, Metric& metric);
 	private:
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
-		vector<vector<Contain>> contain; // key: id value: 1D array
 		vector<vector<bpair>> bandwidth;
 		Graph t_G;
 		Forest t_F;
@@ -36,6 +36,7 @@ class Problem2 {
 Problem2::Problem2(Graph G) {
 	adjList = new vector<edgeList>[G.V.size()];
 	size = G.V.size();
+
 	for (int i = 0; i < G.E.size(); i++) {
 		// undirected graph
 		edgeList t = {i, G.E[i].vertex[1], G.E[i].ce};
@@ -48,9 +49,7 @@ Problem2::Problem2(Graph G) {
 		// sort the adjlist edge by cost
 		sort(adjList[i].begin(), adjList[i].end(), Compare);
 	}
-	contain.reserve(size);
 	bandwidth.reserve(size);
-
 	t_G = G;
 }
 
@@ -58,12 +57,10 @@ Problem2::~Problem2() {
 	for (int i = 0; i < size; i++) {
 		adjList[i].clear();
 		bandwidth[i].clear();
-		contain[i].clear();
 	}
 
 	delete [] adjList;
 
-	contain.clear();
 	bandwidth.clear();
 
 }
@@ -72,17 +69,10 @@ int Problem2::getBandwith(const int& s,const int& id) {
 	for (int i = 0; i < bandwidth[s].size(); i++) {
 		if (bandwidth[s][i].first == id) return i;
 	}
-	return -1;
+	return 0;
 }
 
-int Problem2::getContainIndex(const int& source, const int& id) {
-	int i;
-	for (i = 0; i < contain[source].size() && contain[source][i].id != id; i++);
-	return i;
-}
-
-
-void Problem2::dijkstra(Graph &G, Tree &MTid, Metric& metric , int s, const int& t) {
+void Problem2::dijkstra(Tree &MTid, Metric& metric , int s, const int& t) {
 	priority_queue<bpair, vector<bpair>, greater<bpair>> pq;
 	s--;
 	for (int i = 0; i < size; i++) {
@@ -90,9 +80,7 @@ void Problem2::dijkstra(Graph &G, Tree &MTid, Metric& metric , int s, const int&
 	}
 
 	metric.distance[s][s] = 0;
-
 	pq.push({0, s});
-
 	while(!pq.empty()) {
 		int u = pq.top().second;
 		int dist_u = pq.top().first;
@@ -100,35 +88,101 @@ void Problem2::dijkstra(Graph &G, Tree &MTid, Metric& metric , int s, const int&
 
 		for (auto edge : adjList[u]) {
 			int v = edge.dest-1;
-
-			if (dist_u + edge.cost < metric.distance[s][v]) {
+			if (dist_u + edge.cost < metric.distance[s][v] && t_G.E[edge.index].b >= t) {
 				metric.distance[s][v] = dist_u + edge.cost;
 				metric.edges[s][v] = edge;
 				pq.push({metric.distance[s][v], v});
 			}
 		}
-
 	}
 }
 
-void Problem2::shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t) {
+bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
+	// using prime's algorithm
+	vector<bool> contain(size, false);
+	vector<bool> contain_path(t_G.E.size(), false);
+	priority_queue<bpair, vector<bpair>, greater<bpair>> pq;
+
+	int s = MTid.s-1;
+	contain[s] = true;
+	int need = MTid.V.size() - 1;
+
+	for (auto v : MTid.V) {
+		if (metric.distance[s][v-1] != INF)
+			pq.push({metric.distance[s][v-1], v-1});
+	}
+
+	while (need && !pq.empty()) {
+		int v = pq.top().second; pq.pop();
+
+		if (contain[v]) continue;
+
+		contain[v] = true;
+		need--;
+
+		addPath(MTid, metric, contain_path, v, t);
+
+		for (auto u : MTid.V) {
+			u--;
+			if (!contain[u-1] && metric.distance[v][u] != INF) {
+				pq.push({metric.distance[v][u], u});
+			}
+		}
+	}
+
+	if (need){
+		MTid.E.clear();
+		MTid.ct = 0;
+		return false;
+	};
+
+	return true; 
+}
+
+void Problem2::addPath(Tree &MTid, Metric& metric, vector<bool>& contain, const int& d, const int& t) {
+	int parent = d;
+	int s = MTid.s-1;
+
+	edgeList e;
+	vector<treeEdge> temp;
+	do {
+		e = metric.edges[s][parent];
+
+		if (t_G.E[e.index].vertex[0] != e.dest) parent = t_G.E[e.index].vertex[0]-1;
+		else parent = t_G.E[e.index].vertex[1]-1;
+		if (!contain[e.index]) {
+			temp.push_back({parent+1, e.dest});
+			t_G.E[e.index].b -= t;
+			MTid.ct += t_G.E[e.index].ce * t;
+			contain[e.index] = true;
+		}
+	} while(parent != s);
+
+	for (auto it = temp.end()-1; it >= temp.begin(); it--) {
+		MTid.E.push_back(*it);
+	}
+
+	return;
+}
+
+bool Problem2::shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t) {
 
 	// initilize
-	metric.distance = new int*[size];
-	metric.edges = new edgeList*[size];
+	metric.distance.reserve(size);
+	metric.edges.reserve(size);
 
-	for (int i = 0; i < G.V.size(); i++) {
-		metric.distance[i] = new int[size];
-		metric.edges[i] = new edgeList[size];
+	for (int i = 0; i < size; i++) {
+		metric.distance[i].reserve(size);
+		metric.edges[i].reserve(size);
 	}
 
 	// find all shortestPath
-
 	for (auto i : MTid.V) {
-		dijkstra(G, MTid, metric, i, t);
+		dijkstra(MTid, metric, i, t);
 	}
+	// using the MST to construct path
+	return MST(MTid, metric, t);
 
-	printShortest(G, MTid, metric);
 }
 
 void Problem2::printShortest(Graph& G, Tree &MTid, Metric& metric) {
@@ -136,9 +190,13 @@ void Problem2::printShortest(Graph& G, Tree &MTid, Metric& metric) {
 	for (auto i : MTid.V) {
 		i--;
 		std::cout << "===From [" << i+1 << "] ===\n";
-		for (int j = 0; j < G.V.size(); j++) {
-			std::cout << i+1 << " " << j+1 <<  " : " << metric.distance[i][j] << "\n";
+		for (auto j : G.V) {
+			edgeList t = metric.edges[i][j];
+			std::cout << i+1 << " "
+					  << j+1 <<  " : "
+					  << metric.distance[i][j] << "\n";
 		}
+
 		std::cout << "=======End======\n";
 	}
 }
@@ -149,7 +207,7 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	/* Write your code here. */
 	Tree t_MTid;
 	Metric metric;
-	
+
 	// initial vertex
 	for (int i = 0; i < D.size; i++) {
 		t_MTid.V.push_back(D.destinationVertices[i]);
@@ -158,13 +216,22 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	t_MTid.s = s;
 	t_MTid.id = id;
 	t_MTid.ct = 0;
-
+	s--;
+	
 	// store multicast tree cost
 	bandwidth[s].push_back(make_pair(id, t));
+	
+	bool result = shortestPath(t_G, t_MTid, metric, t);
+	t_F.trees.push_back(t_MTid);
+	t_F.size++;
+	printTree(id);
+	printGraph(t_G);
 
-	shortestPath(t_G, t_MTid, metric, t);
+	MTid = t_MTid;
+	G = t_G;
+
 	/* You should return true or false according the insertion result */
-	return true;
+	return result;
 }
 
 void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
@@ -185,26 +252,32 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 	return;
 }
 
-void Problem2::printTree(int id, Forest MTidForest) {
+void Problem2::printTree(int id) {
 	// find the tree in MTidForest by id
 	int index = 0;
-	for (; index < MTidForest.size && MTidForest.trees[index].id != id; index++);
-	if (index >= MTidForest.size) return;
+	for (; index < t_F.size && t_F.trees[index].id != id; index++);
+	if (index >= t_F.size) return;
 	std::cout << "===   [" << id << "]    ===\n";
+
 	// print the tree information
-	Tree t = MTidForest.trees[index];
+	Tree t = t_F.trees[index];
 	std::cout << "source: " << t.s << "\n";
 	std::cout << "Vertex: { ";
+
 	for (int it : t.V) {
 		std::cout << it << " ";
 	}
+
 	std::cout << "}" << "\n";
 	std::cout << "edge: " << "\n";
+
 	for (treeEdge edge : t.E) {
 		std::cout << edge.vertex[0] << " " << edge.vertex[1] << "\n";
 	}
-	std::cout << "total cost: " << t.ct << "\n\n";
+
+	std::cout << "total cost: " << t.ct << "\n";
 	std::cout << "=======End======\n";
+
 	return;
 }
 
@@ -228,9 +301,9 @@ void Problem2::printGraph(Graph G) {
 	std::cout << "=======End======\n";
 }
 
-void Problem2::printForest(Forest F) {
-	for (int i = 0; i < F.size; i++) {
-		printTree(F.trees[i].id, F);
+void Problem2::printForest() {
+	for (int i = 0; i < t_F.size; i++) {
+		printTree(t_F.trees[i].id);
 	}
 }
 
