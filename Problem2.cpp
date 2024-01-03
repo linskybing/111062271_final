@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #define bpair pair<int, int>
+#define btuple tuple<int, int, int>
 #define INF 10000001
 class Problem2 {
 	public:
@@ -20,7 +21,7 @@ class Problem2 {
 		// sub function
 		void dijkstra(Tree &MTid, Metric& metric , int s, const int& t);
 		bool shortestPath(Tree &MTid, Metric& metric, const int& t); // metric closure
-		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, const int& t, const int& cid); // from mst add path to MTid
+		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t, const int& cid); // from mst add path to MTid
 		bool MST(Tree &MTid, Metric& metric, const int& t); // find MST from metric closure
 		void release(Tree& MTid, const int& bandw);
 		// get member variable
@@ -33,7 +34,7 @@ class Problem2 {
 		void printGraph(Graph G); // print the Graph
 		void printForest(); // print all of the MTid
 		void printBandwid();
-		void printShortest(Graph& G, Tree &MTid, Metric& metric);
+		void printShortest(Tree &MTid, Metric& metric);
 
 	private:
 		int size;
@@ -100,6 +101,7 @@ void Problem2::dijkstra(Tree &MTid, Metric& metric , int s, const int& t) {
 
 	metric.distance[s][s] = 0;
 	pq.push({0, s});
+
 	while(!pq.empty()) {
 		int u = pq.top().second;
 		int dist_u = pq.top().first;
@@ -107,9 +109,10 @@ void Problem2::dijkstra(Tree &MTid, Metric& metric , int s, const int& t) {
 
 		for (auto edge : adjList[u]) {
 			int v = edge.dest-1;
-			if (dist_u + edge.cost < metric.distance[s][v] && t_G.E[edge.index].b >= t) {
+			if (u != v && dist_u + edge.cost < metric.distance[s][v] && t_G.E[edge.index].b >= t) {
 				metric.distance[s][v] = dist_u + edge.cost;
 				metric.edges[s][v] = edge;
+
 				pq.push({metric.distance[s][v], v});
 			}
 		}
@@ -121,7 +124,7 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	bool* contain = new bool[size];
 	bool* contain_path = new bool[t_G.E.size()];
 
-	priority_queue<bpair, vector<bpair>, greater<bpair>> pq;
+	priority_queue<btuple, vector<btuple>, greater<btuple>> pq;
 
 	// initilize
 	for (int i = 0; i < size; i++) {
@@ -142,24 +145,26 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 
 	for (auto v : MTid.V) {
 		v--;
-		if (metric.distance[s][v] != INF)
-			pq.push({metric.distance[s][v], v});
+		if (metric.distance[s][v] != INF && v != s)
+			pq.push({metric.distance[s][v], v, s});
 	}
 
 	while (need && !pq.empty()) {
-		int v = pq.top().second; pq.pop();
+		int v = get<1>(pq.top());
+		int v1 = get<2>(pq.top());
+		pq.pop();
 
 		if (contain[v]) continue;
 
 		contain[v] = true;
 		need--;
 
-		addPath(MTid, metric, contain_path, v, t, cid);
+		addPath(MTid, metric, contain_path, v1, v, t, cid);
 
 		for (auto u : MTid.V) {
 			u--;
 			if (!contain[u] && metric.distance[v][u] != INF) {
-				pq.push({metric.distance[v][u], u});
+				pq.push({metric.distance[v][u], u, v});
 			}
 		}
 	}
@@ -171,6 +176,9 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	if (need){
 		MTid.E.clear();
 		MTid.ct = 0;
+		for (auto it : usageEdge[s][cid].edges) {
+			t_G.E[it].b += t;
+		}
 		usageEdge[s][cid].edges.clear();
 		return false;
 	};
@@ -178,12 +186,11 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	return true; 
 }
 
-void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, const int& t, const int& cid) {
+void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t, const int& cid) {
 	int parent = d;
-	int s = MTid.s-1;
-
 	edgeList e;
 	vector<treeEdge> temp;
+
 	do {
 		e = metric.edges[s][parent];
 
@@ -199,7 +206,7 @@ void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, 
 			MTid.ct += t_G.E[e.index].ce * t;
 
 			// record edge index
-			usageEdge[s][cid].edges.push_back(e.index);
+			usageEdge[MTid.s-1][cid].edges.push_back(e.index);
 
 			contain[e.index] = true;
 		}
@@ -243,12 +250,12 @@ bool Problem2::shortestPath(Tree &MTid, Metric& metric, const int& t) {
 	return result;
 }
 
-void Problem2::printShortest(Graph& G, Tree &MTid, Metric& metric) {
+void Problem2::printShortest(Tree &MTid, Metric& metric) {
 
 	for (auto i : MTid.V) {
 		i--;
 		std::cout << "===From [" << i+1 << "] ===\n";
-		for (auto j : G.V) {
+		for (auto j : t_G.V) {
 			edgeList t = metric.edges[i][j];
 			std::cout << i+1 << " "
 					  << j+1 <<  " : "
@@ -296,7 +303,7 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 }
 
 void Problem2::release(Tree& MTid, const int& bandw) {
-	int index = getUsageIndex(MTid.s-1, MTid.id);;
+	int index = getUsageIndex(MTid.s-1, MTid.id);
 	for (int i = 0; i < usageEdge[MTid.s-1][index].edges.size(); i++) {
 		// release bandwith
 		t_G.E[usageEdge[MTid.s-1][index].edges[i]].b += bandw;
@@ -348,8 +355,6 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 		pq.pop();
 		shortestPath(t_F.trees[index], metric, t);
 	}
-
-	printGraph(t_G);
 
 	MTidForest = t_F;
 	G = t_G;

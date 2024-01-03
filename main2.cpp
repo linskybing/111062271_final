@@ -93,11 +93,11 @@ int main(void) {
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);
 			P2.stop(id, G, F);
-
 		}
 		else if (input_string[0] == 'r') {
 			P2.rearrange(G, F);
-
+			P2.printForest();
+			P2.printGraph(G);
 		}
 	}
 	return 0;
