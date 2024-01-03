@@ -22,7 +22,7 @@ class Problem1 {
 		void allocate(Graph &G, Tree &MTid, const int& s, const int& t, int& need); // allocate resource to MTid
 		void allocateAddiction(Graph &G, Tree &MTid, const int& s, int& need, const int& vi);
 		int getBandwith(const int& s, const int& id);
-		int getContainIndex(const int& s, const int& id);
+		int getContainIndex(const int s, const int& id);
 		void printTree(int id, Forest MTidForest);
 		void printAdj(); // print the AdjList
 		void printGraph(Graph G); // print the Graph
@@ -80,7 +80,7 @@ int Problem1::getBandwith(const int& s,const int& id) {
 	return -1;
 }
 
-int Problem1::getContainIndex(const int& source, const int& id) {
+int Problem1::getContainIndex(const int source, const int& id) {
 	int i;
 	for (i = 0; i < contain[source].size() && contain[source][i].id != id; i++);
 	return i;

@@ -6,7 +6,7 @@
 #include <algorithm>
 
 #define bpair pair<int, int>
-#define INF 1000
+#define INF 10000001
 class Problem2 {
 	public:
 		Problem2(Graph G);  //constructor
@@ -19,12 +19,13 @@ class Problem2 {
 
 		// sub function
 		void dijkstra(Tree &MTid, Metric& metric , int s, const int& t);
-		bool shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t); // metric closure
-		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, const int& t); // from mst add path to MTid
+		bool shortestPath(Tree &MTid, Metric& metric, const int& t); // metric closure
+		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, const int& t, const int& cid); // from mst add path to MTid
 		bool MST(Tree &MTid, Metric& metric, const int& t); // find MST from metric closure
-
+		void release(Tree& MTid, const int& bandw);
 		// get member variable
 		int getBandwith(const int& s, const int& id);
+		int getUsageIndex(const int s, const int& id);
 
 		// output
 		void printTree(int id);
@@ -38,6 +39,7 @@ class Problem2 {
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
 		vector<vector<bpair>> bandwidth;
+		vector<vector<Contain>> usageEdge;
 		Graph t_G;
 		Forest t_F;
 };
@@ -59,6 +61,7 @@ Problem2::Problem2(Graph G) {
 		sort(adjList[i].begin(), adjList[i].end(), Compare);
 	}
 	bandwidth.reserve(size);
+	usageEdge.reserve(size);
 	t_G = G;
 }
 
@@ -66,8 +69,10 @@ Problem2::~Problem2() {
 	for (int i = 0; i < size; i++) {
 		vector<edgeList>().swap(adjList[i]);
 		vector<bpair>().swap(bandwidth[i]);
+		vector<Contain>().swap(usageEdge[i]);
 	}
 	vector<vector<bpair>>().swap(bandwidth);
+	vector<vector<Contain>>().swap(usageEdge);
 	delete [] adjList;
 
 }
@@ -79,8 +84,15 @@ int Problem2::getBandwith(const int& s,const int& id) {
 	return 0;
 }
 
+int Problem2::getUsageIndex(const int s, const int& id) {
+	int i;
+	for (i = 0; i < usageEdge[s].size() && usageEdge[s][i].id != id; i++);
+	return i;
+}
+
 void Problem2::dijkstra(Tree &MTid, Metric& metric , int s, const int& t) {
 	priority_queue<bpair, vector<bpair>, greater<bpair>> pq;
+
 	s--;
 	for (int i = 0; i < size; i++) {
 		metric.distance[s][i] = INF;
@@ -108,6 +120,7 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	// using prime's algorithm
 	bool* contain = new bool[size];
 	bool* contain_path = new bool[t_G.E.size()];
+
 	priority_queue<bpair, vector<bpair>, greater<bpair>> pq;
 
 	// initilize
@@ -116,18 +129,21 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	}
 
 	for (int i = 0; i < t_G.E.size(); i++) {
-		contain[i] = false;
+		contain_path[i] = false;
 	}
 
 	int s = MTid.s-1;
+	int cid = getUsageIndex(s, MTid.id);
+
 	contain[s] = true;
 	int need = MTid.V.size() - 1;
 
 	// prime's algorithm
 
 	for (auto v : MTid.V) {
-		if (metric.distance[s][v-1] != INF)
-			pq.push({metric.distance[s][v-1], v-1});
+		v--;
+		if (metric.distance[s][v] != INF)
+			pq.push({metric.distance[s][v], v});
 	}
 
 	while (need && !pq.empty()) {
@@ -138,11 +154,11 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 		contain[v] = true;
 		need--;
 
-		addPath(MTid, metric, contain_path, v, t);
+		addPath(MTid, metric, contain_path, v, t, cid);
 
 		for (auto u : MTid.V) {
 			u--;
-			if (!contain[u-1] && metric.distance[v][u] != INF) {
+			if (!contain[u] && metric.distance[v][u] != INF) {
 				pq.push({metric.distance[v][u], u});
 			}
 		}
@@ -155,13 +171,14 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	if (need){
 		MTid.E.clear();
 		MTid.ct = 0;
+		usageEdge[s][cid].edges.clear();
 		return false;
 	};
 
 	return true; 
 }
 
-void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, const int& t) {
+void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, const int& t, const int& cid) {
 	int parent = d;
 	int s = MTid.s-1;
 
@@ -170,12 +187,20 @@ void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, 
 	do {
 		e = metric.edges[s][parent];
 
+		// find the parent node
 		if (t_G.E[e.index].vertex[0] != e.dest) parent = t_G.E[e.index].vertex[0]-1;
 		else parent = t_G.E[e.index].vertex[1]-1;
+
 		if (!contain[e.index]) {
 			temp.push_back({parent+1, e.dest});
+
+			// update graph
 			t_G.E[e.index].b -= t;
 			MTid.ct += t_G.E[e.index].ce * t;
+
+			// record edge index
+			usageEdge[s][cid].edges.push_back(e.index);
+
 			contain[e.index] = true;
 		}
 	} while(parent != s);
@@ -187,7 +212,7 @@ void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& d, 
 	return;
 }
 
-bool Problem2::shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t) {
+bool Problem2::shortestPath(Tree &MTid, Metric& metric, const int& t) {
 
 	// initilize
 	metric.distance = new int*[size];
@@ -202,6 +227,7 @@ bool Problem2::shortestPath(Graph &G, Tree &MTid, Metric& metric, const int& t) 
 	for (auto i : MTid.V) {
 		dijkstra(MTid, metric, i, t);
 	}
+
 	// using the MST to construct path
 	bool result =  MST(MTid, metric, t);
 
@@ -252,12 +278,15 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	
 	// store multicast tree cost
 	bandwidth[s].push_back(make_pair(id, t));
-	
-	bool result = shortestPath(t_G, t_MTid, metric, t);
+
+	Contain t_c;
+	t_c.id = id;
+	usageEdge[s].push_back(t_c);
+
+	// build
+	bool result = shortestPath(t_MTid, metric, t);
 	t_F.trees.push_back(t_MTid);
 	t_F.size++;
-	printTree(id);
-	printGraph(t_G);
 
 	MTid = t_MTid;
 	G = t_G;
@@ -266,12 +295,64 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	return result;
 }
 
+void Problem2::release(Tree& MTid, const int& bandw) {
+	int index = getUsageIndex(MTid.s-1, MTid.id);;
+	for (int i = 0; i < usageEdge[MTid.s-1][index].edges.size(); i++) {
+		// release bandwith
+		t_G.E[usageEdge[MTid.s-1][index].edges[i]].b += bandw;
+	}
+
+	MTid.ct = 0;
+	MTid.E.clear();
+	usageEdge[MTid.s-1][index].edges.clear();
+	return;
+}
+
 void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	/* Store your output graph and multicast tree forest into G and MTidForest
 	   Note: Please "only" include mutlicast trees that you added nodes in MTidForest. */
 	
-	/* Write your code here. */
+	// find the multicast tree index
+	int i = 0;
+	for (; i < t_F.size && t_F.trees[i].id != id; i++);
 	
+	if (i == t_F.size) return;
+
+	// release resource
+	int s = t_F.trees[i].s-1;
+	int index = getBandwith(s, id);
+	release(t_F.trees[i], bandwidth[s][index].second);
+	t_F.trees[i].V.clear();
+
+	// remove tree
+	bandwidth[s].erase(bandwidth[s].begin() + index); // clean the multicast bandwith
+	usageEdge[s].erase(usageEdge[s].begin() + getUsageIndex(s, id));
+	t_F.trees.erase(t_F.trees.begin() + i);
+	t_F.size--;
+
+	// find the most expensive cost that MTid has not yet been satisfied 
+	priority_queue<bpair, vector<bpair>, less<bpair>> pq;
+
+	for (int i = 0; i < t_F.size; i++) {
+		if (t_F.trees[i].E.size() == 0) {
+			int j = getBandwith(s, id);
+			pq.push({bandwidth[t_F.trees[i].s-1][j].second , i});
+		}
+	}
+
+	// allocate resource
+	Metric metric;
+	while(!pq.empty()) {
+		int index = pq.top().second;
+		int t = pq.top().first;
+		pq.pop();
+		shortestPath(t_F.trees[index], metric, t);
+	}
+
+	printGraph(t_G);
+
+	MTidForest = t_F;
+	G = t_G;
 	return;
 }
 
@@ -279,8 +360,36 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 	/* Store your output graph and multicast tree forest into G and MTidForest
 	   Note: Please include "all" active mutlicast trees in MTidForest. */
 
-	/* Write your code here. */
-	
+	// release all resouce
+	int s, id, t, n;
+	for (int i = 0; i < t_F.size; i++) {
+		s = t_F.trees[i].s-1;
+		id = t_F.trees[i].id;
+		t = bandwidth[s][getBandwith(s, id)].second;
+		release(t_F.trees[i], t);
+	}
+
+	// find the most expensive cost that MTid has not yet been satisfied 
+	priority_queue<bpair, vector<bpair>, less<bpair>> pq;
+
+	for (int i = 0; i < t_F.size; i++) {
+		if (t_F.trees[i].E.size() == 0) {
+			int j = getBandwith(s, id);
+			pq.push({bandwidth[t_F.trees[i].s-1][j].second , i});
+		}
+	}
+
+	// allocate resource
+	Metric metric;
+	while(!pq.empty()) {
+		int index = pq.top().second;
+		int t = pq.top().first;
+		pq.pop();
+		shortestPath(t_F.trees[index], metric, t);
+	}
+
+	G = t_G;
+	MTidForest = t_F;
 	return;
 }
 

@@ -12,7 +12,7 @@ struct edgeList
 
 struct Contain {
     int id; // the id of tree
-    vector<int> vertex; // the index of the vertex
+    vector<int> edges; // the index of the vertex
 };
 
 bool Compare(edgeList left, edgeList right) {
