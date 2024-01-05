@@ -1,9 +1,9 @@
-all: problem2
+all: problem1 problem2
 
-problem1: Problem1.h main1.cpp
+problem1:
 	g++ -o main1 main1.cpp -std=c++2a
 
-problem2: Problem2.h main2.cpp
+problem2:
 	g++ -o main2 main2.cpp -std=c++2a
 
 clean:

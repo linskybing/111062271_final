@@ -23,7 +23,7 @@ class Problem1 {
 		void allocateAddiction(Graph &G, Tree &MTid, const int& s, int& need, const int& vi);
 		int getBandwith(const int& s, const int& id);
 		int getContainIndex(const int s, const int& id);
-		void printTree(int id, Forest MTidForest);
+		void printTree(Tree &MTid);
 		void printAdj(); // print the AdjList
 		void printGraph(Graph G); // print the Graph
 		void printForest(Forest F); // print all of the MTid
@@ -277,6 +277,8 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 		int need = size - count;
 		allocateAddiction(t_G, t_F.trees[i], source, need, vi);
 	}
+
+	MTidForest = t_F;
 	G = t_G;
 	return;
 }
@@ -306,26 +308,29 @@ void Problem1::rearrange(Graph &G, Forest &MTidForest) {
 	return;
 }
 
-void Problem1::printTree(int id, Forest MTidForest) {
-	// find the tree in MTidForest by id
-	int index = 0;
-	for (; index < MTidForest.size && MTidForest.trees[index].id != id; index++);
-	if (index >= MTidForest.size) return;
-	std::cout << "===   [" << id << "]    ===\n";
+void Problem1::printTree(Tree &MTid) {
+
+	cout << "===   [" << MTid.id << "]    ===\n";
+
 	// print the tree information
-	Tree t = MTidForest.trees[index];
-	std::cout << "source: " << t.s << "\n";
-	std::cout << "Vertex: { ";
-	for (int it : t.V) {
+
+	cout << "source: " << MTid.s << "\n";
+	cout << "Vertex: { ";
+
+	for (int it : MTid.V) {
 		std::cout << it << " ";
 	}
-	std::cout << "}" << "\n";
-	std::cout << "edge: " << "\n";
-	for (treeEdge edge : t.E) {
-		std::cout << edge.vertex[0] << " " << edge.vertex[1] << "\n";
+
+	cout << "}" << "\n";
+	cout << "edge: " << "\n";
+
+	for (treeEdge edge : MTid.E) {
+		cout << edge.vertex[0] << " " << edge.vertex[1] << "\n";
 	}
-	std::cout << "total cost: " << t.ct << "\n\n";
-	std::cout << "=======End======\n";
+
+	cout << "total cost: " << MTid.ct << "\n\n";
+	cout << "=======End======\n";
+
 	return;
 }
 
@@ -342,16 +347,16 @@ void Problem1::printAdj() {
 }
 
 void Problem1::printGraph(Graph G) {
-	std::cout << "===Graph Edge===\n";
+	cout << "===Graph Edge===\n";
 	for (auto it = G.E.begin(); it < G.E.end(); it++) {
-		std::cout << it->vertex[0] << " " << it->vertex[1] << ": " << it->b << "/" << it->ce << "\n";
+		cout << it->vertex[0] << " " << it->vertex[1] << ": " << it->b << "/" << it->ce << "\n";
 	}
-	std::cout << "=======End======\n";
+	cout << "=======End======\n";
 }
 
 void Problem1::printForest(Forest F) {
 	for (int i = 0; i < F.size; i++) {
-		printTree(F.trees[i].id, F);
+		printTree(F.trees[i]);
 	}
 }
 

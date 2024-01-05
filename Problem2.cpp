@@ -23,16 +23,16 @@ class Problem2 {
 		bool steiner(Tree &MTid, Metric& metric, const int& t);
 		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t, const int& cid); // from mst add path to MTid
 		bool MST(Tree &MTid, Metric& metric, const int& t); // find MST from metric closure
-		void release(Tree& MTid, const int& bandw);
+		int release(Tree& MTid, const int& bandw);//////
 		// get member variable
 		int getBandwith(const int& s, const int& id);
 		int getUsageIndex(const int s, const int& id);
 
 		// output
-		void printTree(int id);
+		void printTree(Tree &MTid);
 		void printAdj(); // print the AdjList
 		void printGraph(Graph G); // print the Graph
-		void printForest(); // print all of the MTid
+		void printForest(Forest &MTidForest); // print all of the MTid
 		void printBandwid();
 		void printShortest(Tree &MTid, Metric& metric);
 
@@ -82,7 +82,7 @@ int Problem2::getBandwith(const int& s,const int& id) {
 	for (int i = 0; i < bandwidth[s].size(); i++) {
 		if (bandwidth[s][i].first == id) return i;
 	}
-	return 0;
+	return -1;
 }
 
 int Problem2::getUsageIndex(const int s, const int& id) {
@@ -295,14 +295,17 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	t_F.trees.push_back(t_MTid);
 	t_F.size++;
 
-	MTid = t_MTid;
+	if (result) {
+		MTid = t_MTid;
+	}
+
 	G = t_G;
 
 	/* You should return true or false according the insertion result */
 	return result;
 }
 
-void Problem2::release(Tree& MTid, const int& bandw) {
+int Problem2::release(Tree& MTid, const int& bandw) {
 	int index = getUsageIndex(MTid.s-1, MTid.id);
 	for (int i = 0; i < usageEdge[MTid.s-1][index].edges.size(); i++) {
 		// release bandwith
@@ -312,13 +315,13 @@ void Problem2::release(Tree& MTid, const int& bandw) {
 	MTid.ct = 0;
 	MTid.E.clear();
 	usageEdge[MTid.s-1][index].edges.clear();
-	return;
+	return index;
 }
 
 void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	/* Store your output graph and multicast tree forest into G and MTidForest
 	   Note: Please "only" include mutlicast trees that you added nodes in MTidForest. */
-	
+	Forest r_F;
 	// find the multicast tree index
 	int i = 0;
 	for (; i < t_F.size && t_F.trees[i].id != id; i++);
@@ -328,22 +331,27 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	// release resource
 	int s = t_F.trees[i].s-1;
 	int index = getBandwith(s, id);
-	release(t_F.trees[i], bandwidth[s][index].second);
+	int index2 = release(t_F.trees[i], bandwidth[s][index].second);
 	t_F.trees[i].V.clear();
 
 	// remove tree
 	bandwidth[s].erase(bandwidth[s].begin() + index); // clean the multicast bandwith
-	usageEdge[s].erase(usageEdge[s].begin() + getUsageIndex(s, id));
+	usageEdge[s].erase(usageEdge[s].begin() + index2);
 	t_F.trees.erase(t_F.trees.begin() + i);
 	t_F.size--;
-
 	// find the most expensive cost that MTid has not yet been satisfied 
 	priority_queue<bpair, vector<bpair>, less<bpair>> pq;
 
 	for (int i = 0; i < t_F.size; i++) {
 		if (t_F.trees[i].E.size() == 0) {
+			s = t_F.trees[i].s -1;
+			id = t_F.trees[i].id;
 			int j = getBandwith(s, id);
 			pq.push({bandwidth[t_F.trees[i].s-1][j].second , i});
+		}
+		else {
+			r_F.trees.push_back(t_F.trees[i]);
+			r_F.size++;
 		}
 	}
 
@@ -353,10 +361,18 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 		int index = pq.top().second;
 		int t = pq.top().first;
 		pq.pop();
-		steiner(t_F.trees[index], metric, t);
+
+		bool result = steiner(t_F.trees[index], metric, t);
+
+		if (result){
+			int i = 0;
+			for (; i < r_F.size && t_F.trees[index].id > r_F.trees[i].id; i++);
+			r_F.trees.insert(r_F.trees.begin() + i, t_F.trees[index]);
+			r_F.size++;
+		}
 	}
 
-	MTidForest = t_F;
+	MTidForest = r_F;
 	G = t_G;
 	return;
 }
@@ -379,6 +395,8 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 
 	for (int i = 0; i < t_F.size; i++) {
 		if (t_F.trees[i].E.size() == 0) {
+			s = t_F.trees[i].s-1;
+			id = t_F.trees[i].id;
 			int j = getBandwith(s, id);
 			pq.push({bandwidth[t_F.trees[i].s-1][j].second , i});
 		}
@@ -393,36 +411,43 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 		steiner(t_F.trees[index], metric, t);
 	}
 
+	// return Forest 
+	Forest r_F;
+	for (int i = 0; i < t_F.trees.size(); i++) {
+		if (t_F.trees[i].E.size() != 0) {
+			r_F.trees.push_back(t_F.trees[i]);
+			r_F.size++;
+		}
+	}
+
 	G = t_G;
-	MTidForest = t_F;
+	MTidForest = r_F;
 	return;
 }
 
-void Problem2::printTree(int id) {
+void Problem2::printTree(Tree &MTid) {
 	// find the tree in MTidForest by id
-	int index = 0;
-	for (; index < t_F.size && t_F.trees[index].id != id; index++);
-	if (index >= t_F.size) return;
-	std::cout << "===   [" << id << "]    ===\n";
+
+	cout << "===   [" << MTid.id << "]    ===\n";
 
 	// print the tree information
-	Tree t = t_F.trees[index];
-	std::cout << "source: " << t.s << "\n";
-	std::cout << "Vertex: { ";
+	Tree t = MTid;
+	cout << "source: " << t.s << "\n";
+	cout << "Vertex: { ";
 
 	for (int it : t.V) {
-		std::cout << it << " ";
+		cout << it << " ";
 	}
 
-	std::cout << "}" << "\n";
-	std::cout << "edge: " << "\n";
+	cout << "}" << "\n";
+	cout << "edge: " << "\n";
 
 	for (treeEdge edge : t.E) {
-		std::cout << edge.vertex[0] << " " << edge.vertex[1] << "\n";
+		cout << edge.vertex[0] << " " << edge.vertex[1] << "\n";
 	}
 
-	std::cout << "total cost: " << t.ct << "\n";
-	std::cout << "=======End======\n";
+	cout << "total cost: " << t.ct << "\n";
+	cout << "=======End======\n";
 
 	return;
 }
@@ -447,9 +472,9 @@ void Problem2::printGraph(Graph G) {
 	std::cout << "=======End======\n";
 }
 
-void Problem2::printForest() {
-	for (int i = 0; i < t_F.size; i++) {
-		printTree(t_F.trees[i].id);
+void Problem2::printForest(Forest &MTidForest) {
+	for (int i = 0; i < MTidForest.size; i++) {
+		printTree(MTidForest.trees[i]);
 	}
 }
 
