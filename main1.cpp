@@ -12,7 +12,7 @@ void graph_input(Graph& G) {
 	int vertex_num, edge_num;
 	cin >> vertex_num >> edge_num;
 
-	for (int i = 0; i < vertex_num; i++) {
+	for (int i = 1; i <= vertex_num; i++) {
 		G.V.push_back(i);
 	}
 
@@ -84,31 +84,16 @@ int main(void) {
 			Set D;
 			insert_input(id, s, t, D, input_string);
 			P1.insert(id, s, D, t, G, T);
-			//P1.printTree(id, F);
-			//P1.printGraph(G);
-			Graph temp;
-			Forest tempF;
-			G = temp;
-			F = tempF;
+
 		}
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);
 			P1.stop(id, G, F);
 
-			//P1.printForest(F);
-			Graph temp;
-			Forest tempF;
-			G = temp;
-			F = tempF;
 		}
 		else if (input_string[0] == 'r') {
 			P1.rearrange(G, F);
-			P1.printForest(F);
-			P1.printGraph(G);
-			Graph temp;
-			Forest tempF;
-			G = temp;
-			F = tempF;
+
 		}
 	}
 	return 0;

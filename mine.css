@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=PT+Serif&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Noto+Serif+TC&amp;display=swap');
+
+body {
+    font-family: 'PT Serif', 'Noto Serif TC', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.05em; 
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code&family=Noto+Serif+TC&display=swap');
+
+code {
+    font-family: 'Fira Code', monospace;
+}

@@ -12,7 +12,7 @@ void graph_input(Graph& G) {
 	int vertex_num, edge_num;
 	cin >> vertex_num >> edge_num;
 
-	for (int i = 0; i < vertex_num; i++) {
+	for (int i = 1; i <= vertex_num; i++) {
 		G.V.push_back(i);
 	}
 
@@ -85,19 +85,16 @@ int main(void) {
             bool take;
 			insert_input(id, s, t, D, input_string);
 			take = P2.insert(id, s, D, t, G, T);
-			if (take) {
-				P2.printTree(id);
-				P2.printGraph(G);
-			}
+
 		}
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);
 			P2.stop(id, G, F);
+
 		}
 		else if (input_string[0] == 'r') {
 			P2.rearrange(G, F);
-			P2.printForest();
-			P2.printGraph(G);
+
 		}
 	}
 	return 0;

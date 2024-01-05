@@ -19,8 +19,8 @@ class Problem2 {
 		void rearrange(Graph &G, Forest &MTidForest);
 
 		// sub function
-		void dijkstra(Tree &MTid, Metric& metric , int s, const int& t);
-		bool shortestPath(Tree &MTid, Metric& metric, const int& t); // metric closure
+		void dijkstra(Tree &MTid, Metric& metric , int s, const int& t); // metric closure
+		bool steiner(Tree &MTid, Metric& metric, const int& t);
 		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t, const int& cid); // from mst add path to MTid
 		bool MST(Tree &MTid, Metric& metric, const int& t); // find MST from metric closure
 		void release(Tree& MTid, const int& bandw);
@@ -219,7 +219,7 @@ void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, 
 	return;
 }
 
-bool Problem2::shortestPath(Tree &MTid, Metric& metric, const int& t) {
+bool Problem2::steiner(Tree &MTid, Metric& metric, const int& t) {
 
 	// initilize
 	metric.distance = new int*[size];
@@ -291,7 +291,7 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	usageEdge[s].push_back(t_c);
 
 	// build
-	bool result = shortestPath(t_MTid, metric, t);
+	bool result = steiner(t_MTid, metric, t);
 	t_F.trees.push_back(t_MTid);
 	t_F.size++;
 
@@ -353,7 +353,7 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 		int index = pq.top().second;
 		int t = pq.top().first;
 		pq.pop();
-		shortestPath(t_F.trees[index], metric, t);
+		steiner(t_F.trees[index], metric, t);
 	}
 
 	MTidForest = t_F;
@@ -390,7 +390,7 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 		int index = pq.top().second;
 		int t = pq.top().first;
 		pq.pop();
-		shortestPath(t_F.trees[index], metric, t);
+		steiner(t_F.trees[index], metric, t);
 	}
 
 	G = t_G;

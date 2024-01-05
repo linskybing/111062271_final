@@ -128,7 +128,7 @@ void Problem1::release(Graph& G, Tree& MTid, const int& bandw) {
 }
 
 void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& need) {
-	// using prime's algorithm with priority queue
+	// using Prim's algorithm with priority queue
 	// initialize distance table
 	priority_queue<edgeList, vector<edgeList>, cmp> pq;
 
