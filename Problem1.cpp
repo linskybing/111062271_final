@@ -4,9 +4,8 @@
 #include <queue>
 #include <utility>
 #include <algorithm>
-
-#define bpair pair<int, int>
-
+#define ID_SIZE int(1E5 + 1)
+#define INF 0x3f3f3f3f
 /* You can add more functions or variables in each class. 
    But you "Shall Not" delete any functions or variables that TAs defined. */
 
@@ -17,22 +16,21 @@ class Problem1 {
 		void insert(int id, int s, Set D, int t, Graph &G, Tree &MTid);
 		void stop(int id, Graph &G, Forest &MTidForest);
 		void rearrange(Graph &G, Forest &MTidForest);
-		void addEdge(Graph &G, Tree& MTid, edgeList it, int bandw); // add an edge to MTid
-		void release(Graph &G, Tree &MTid, const int& bandw); // release MTid resource
+
+		void addEdge(Graph &G, Tree& MTid, edgeList it); // add an edge to MTid
+		void release(Graph &G, Tree &MTid); // release MTid resource
 		void allocate(Graph &G, Tree &MTid, const int& s, const int& t, int& need); // allocate resource to MTid
-		void allocateAddiction(Graph &G, Tree &MTid, const int& s, int& need, const int& vi);
-		int getBandwith(const int& s, const int& id);
-		int getContainIndex(const int s, const int& id);
+		void allocateAddiction(Graph &G, Tree &MTid, const int& s, int& need);
+
 		void printTree(Tree &MTid);
 		void printAdj(); // print the AdjList
 		void printGraph(Graph G); // print the Graph
 		void printForest(Forest F); // print all of the MTid
-		void printBandwid();
 	private:
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
-		vector<vector<Contain>> contain; // key: id value: 1D array
-		vector<vector<bpair>> bandwidth;
+		vector<Contain> contain; // key: id value: 1D array
+		vector<int> bandwidth;
 		Graph t_G;
 		Forest t_F;
 };
@@ -48,49 +46,31 @@ Problem1::Problem1(Graph G) {
 		adjList[G.E[i].vertex[0] - 1].push_back(t);
 		adjList[G.E[i].vertex[1] - 1].push_back(t2);
 	}
-
 	for (int i = 0; i < G.V.size(); i++) {
 		// sort the adjlist edge by cost
 		sort(adjList[i].begin(), adjList[i].end(), Compare);
 	}
-	contain.reserve(size);
-	bandwidth.reserve(size);
+	contain.reserve(ID_SIZE);
+	bandwidth.reserve(ID_SIZE);
 
 	t_G = G;
-	//printAdj();
 }
 
 Problem1::~Problem1() {
 
 	for (int i = 0; i < size; i++) {
 		vector<edgeList>().swap(adjList[i]);
-		vector<Contain>().swap(contain[i]);
-		vector<bpair>().swap(bandwidth[i]);
 	}
 
 	delete [] adjList;
-	vector<vector<Contain>>().swap(contain);
-	vector<vector<bpair>>().swap(bandwidth);
+	vector<Contain>().swap(contain);
+	vector<int>().swap(bandwidth);
 }
 
-int Problem1::getBandwith(const int& s,const int& id) {
-	for (int i = 0; i < bandwidth[s].size(); i++) {
-		if (bandwidth[s][i].first == id) return i;
-	}
-	return -1;
-}
-
-int Problem1::getContainIndex(const int source, const int& id) {
-	int i;
-	for (i = 0; i < contain[source].size() && contain[source][i].id != id; i++);
-	return i;
-}
-
-void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e, int bandw) {
+void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e) {
 
 	// record index
-	int index = getContainIndex(MTid.s-1, MTid.id);
-	contain[MTid.s-1][index].vertex[e.dest-1] = e.index;
+	contain[MTid.id].vertex[e.dest-1] = e.index;
 
 	treeEdge te;
 	if (e.dest == G.E[e.index].vertex[0]) {
@@ -104,26 +84,25 @@ void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e, int bandw) {
 
 	//add the edge to tree
 	MTid.E.push_back(te);
-	MTid.ct += e.cost * bandw;
+	MTid.ct += e.cost * bandwidth[MTid.id];
 	// update bandwith
-	G.E[e.index].b -= bandw;
+	G.E[e.index].b -= bandwidth[MTid.id];
 
 	return;
 }
 
-void Problem1::release(Graph& G, Tree& MTid, const int& bandw) {
+void Problem1::release(Graph& G, Tree& MTid) {
 	int index;
 	for (auto it = MTid.E.begin(); it < MTid.E.end(); it++) {
-		// release bandwith
-		index = getContainIndex(MTid.s-1, MTid.id);
-		G.E[contain[MTid.s-1][index].vertex[it->vertex[1]-1]].b += bandw;
+		// release bandwith		
+		G.E[contain[MTid.id].vertex[it->vertex[1]-1]].b += bandwidth[MTid.id];
 
 		// clean tree information
-		contain[MTid.s-1][index].vertex[it->vertex[1]-1] = -1;
+		contain[MTid.id].vertex[it->vertex[1]-1] = -1;
 	}
 
 	MTid.ct = 0;
-	MTid.E.clear();
+
 	return;
 }
 
@@ -132,28 +111,30 @@ void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& n
 	// initialize distance table
 	priority_queue<edgeList, vector<edgeList>, cmp> pq;
 
+	vector<int> key(MTid.V.size(), INF);
+
 	for (auto it = adjList[s].begin(); it < adjList[s].end(); it++) {
 		if (G.E[it->index].b >= t) {
+			key[it->dest-1] = it->cost;
 			pq.push(*it);
 		}
 	}
-
-	int index = getContainIndex(s, MTid.id);
 
 	while (need && !pq.empty()) {
 		edgeList e = pq.top(); pq.pop();
 
 		int i = e.dest-1;
-		if (contain[s][index].vertex[i] != -1) continue;
+		if (contain[MTid.id].vertex[i] != -1) continue;
 
-		addEdge(G, MTid, e, t);
+		addEdge(G, MTid, e);
 
 		need--;
 
 		// adjoint edge check
 		vector<edgeList>::iterator it = adjList[i].begin();
 		for (; it < adjList[i].end(); it++) {
-			if (it->dest-1 != s && contain[s][index].vertex[it->dest-1] == -1 && G.E[it->index].b >= t) {
+			if (key[it->dest-1] > it->cost && it->dest-1 != s && contain[MTid.id].vertex[it->dest-1] == -1 && G.E[it->index].b >= t) {
+				key[it->dest-1] = it->cost;
 				pq.push(*it);
 			}
 		}
@@ -162,18 +143,20 @@ void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& n
 	return;
 }
 
-void Problem1::allocateAddiction(Graph& G, Tree& MTid, const int& s, int& need, const int& vi) {
+void Problem1::allocateAddiction(Graph& G, Tree& MTid, const int& s, int& need) {
 	// using prime's algorithm with priority queue
 
 	priority_queue<edgeList, vector<edgeList>, cmp> pq;
+	vector<int> key(MTid.V.size(), INF);
 
-	int bandw = bandwidth[s][getBandwith(s, MTid.id)].second;
+	int bandw = bandwidth[MTid.id];
 
 	for (int i = 0; i < size; i++) {
-		if (contain[s][vi].vertex[i] == -1) continue;
+		if (contain[MTid.id].vertex[i] == -1) continue;
 		// push the edge of the adjoint node that the terminal node point at
 		for (auto it = adjList[i].begin(); it < adjList[i].end(); it++) {
-			if (G.E[it->index].b >= bandw && contain[s][vi].vertex[it->dest-1] == -1) {
+			if (G.E[it->index].b >= bandw && contain[MTid.id].vertex[it->dest-1] == -1 && key[it->dest-1] > it->cost) {
+				key[it->dest-1] = it->cost;
 				pq.push(*it);
 			}
 		}
@@ -183,16 +166,17 @@ void Problem1::allocateAddiction(Graph& G, Tree& MTid, const int& s, int& need, 
 		edgeList e = pq.top(); pq.pop();
 
 		int i = e.dest-1;
-		if (contain[s][vi].vertex[i] != -1) continue;
+		if (contain[MTid.id].vertex[i] != -1) continue;
 
-		addEdge(G, MTid, e, bandw);
+		addEdge(G, MTid, e);
 
 		need--;
 
 		// adjoint edge check
 		vector<edgeList>::iterator it = adjList[i].begin();
 		for (; it < adjList[i].end(); it++) {
-			if (it->dest-1 != s && contain[s][vi].vertex[it->dest-1] == -1 && G.E[it->index].b >= bandw) {
+			if (it->dest-1 != s && contain[MTid.id].vertex[it->dest-1] == -1 && G.E[it->index].b >= bandw && key[it->dest-1] > it->cost ) {
+				key[it->dest-1] = it->cost;
 				pq.push(*it);
 			}
 		}
@@ -216,15 +200,15 @@ void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	s--;
 
 	// store multicast tree cost
-	bandwidth[s].push_back(make_pair(id, t));
+	bandwidth[id] = t;
 
 	Contain t_c;
-	t_c.id = id;
 	for (int i = 0; i < size; i++) {
 		t_c.vertex.push_back(-1);
 	}
 	t_c.vertex[s] = -2;
-	contain[s].push_back(t_c);
+	
+	contain[id] = t_c;
 
 	// allocate resource
 	allocate(t_G, temp, s, t, n);
@@ -235,6 +219,7 @@ void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	G = t_G;
 	t_F.trees.push_back(temp);
 	t_F.size++;
+
 	return;
 }
 
@@ -250,32 +235,30 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 
 	// release resource
 	int s = t_F.trees[i].s-1;
-	int index = getBandwith(s, id);
-	int vi = getContainIndex(s, id);
-	release(t_G, t_F.trees[i], bandwidth[s][index].second);
+
+	release(t_G, t_F.trees[i]);
+
 	t_F.trees[i].V.clear();
 
 	// remove tree
-	contain[s].erase(contain[s].begin() + vi);
-	bandwidth[s].erase(bandwidth[s].begin() + index); // clean the multicast bandwith
 	t_F.trees.erase(t_F.trees.begin() + i);
 	t_F.size--;
 
 	// add more node to other multicast tree
 	for (int i = 0; i < t_F.size; i++) {
 
-		vi = getContainIndex(t_F.trees[i].s-1, t_F.trees[i].id);
+		int id = t_F.trees[i].id;
 
 		int source = t_F.trees[i].s-1;
 
 		// count the number that has been in the tree (should be optimal)
 		int count = 0;
-		for (int i = 0; i < contain[source][vi].vertex.size(); i++) {
-			if (contain[source][vi].vertex[i] != -1) count++;
+		for (int i = 0; i < contain[id].vertex.size(); i++) {
+			if (contain[id].vertex[i] != -1) count++;
 		}
 		if (count == size) continue;
 		int need = size - count;
-		allocateAddiction(t_G, t_F.trees[i], source, need, vi);
+		allocateAddiction(t_G, t_F.trees[i], source, need);
 	}
 
 	MTidForest = t_F;
@@ -292,14 +275,14 @@ void Problem1::rearrange(Graph &G, Forest &MTidForest) {
 	for (int i = 0; i < t_F.size; i++) {
 		s = t_F.trees[i].s-1;
 		id = t_F.trees[i].id;
-		t = bandwidth[s][getBandwith(s, id)].second;
-		release(t_G, t_F.trees[i], t);
+		t = bandwidth[id];
+		release(t_G, t_F.trees[i]);
 	}
 
 	for (int i = 0; i < t_F.size; i++) {
 		s = t_F.trees[i].s-1;
 		id = t_F.trees[i].id;
-		t = bandwidth[s][getBandwith(s, id)].second;
+		t = bandwidth[id];
 		n = t_F.trees[i].V.size();
 		allocate(t_G, t_F.trees[i], s, t, n);
 	}
@@ -357,14 +340,5 @@ void Problem1::printGraph(Graph G) {
 void Problem1::printForest(Forest F) {
 	for (int i = 0; i < F.size; i++) {
 		printTree(F.trees[i]);
-	}
-}
-
-void Problem1::printBandwid() {
-	for (int i = 0; i < size; i++) {
-		std::cout << "vertex " << i+1 << ":\n";
-		for (auto it = bandwidth[i].begin(); it < bandwidth[i].end(); it++) {
-			std::cout << it->first << " " << it->second << "\n";
-		}
 	}
 }

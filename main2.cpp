@@ -85,19 +85,27 @@ int main(void) {
             bool take;
 			insert_input(id, s, t, D, input_string);
 			take = P2.insert(id, s, D, t, G, T);
-			/*if(take) {
+			/*cout << "insert" << endl;
+			if(take) {
 				P2.printTree(T);				
 			}
-			P2.printGraph(G);*/
+			P2.printGraph(G);
+			cout << " end " << endl;*/
 		}
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);
 			P2.stop(id, G, F);
-			/*P2.printForest(F);
-			P2.printGraph(G);*/
+			/*cout << "stop" << endl;
+			P2.printForest(F);
+			P2.printGraph(G);
+			cout << " end " << endl;*/
 		}
 		else if (input_string[0] == 'r') {
 			P2.rearrange(G, F);
+			/*cout << "rearrange" << endl;
+			P2.printForest(F);
+			P2.printGraph(G);
+			cout << " end " << endl;*/
 		}
 	}
 	return 0;

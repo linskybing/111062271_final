@@ -90,11 +90,17 @@ int main(void) {
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);
 			P1.stop(id, G, F);
-			/*P1.printForest(F);
-			P1.printGraph(G);*/
+			/*cout << "stop" << endl;
+			P1.printForest(F);
+			P1.printGraph(G);
+			cout << " end " << endl;*/
 		}
 		else if (input_string[0] == 'r') {
 			P1.rearrange(G, F);
+			/*cout << "rearrange" << endl;
+			P1.printForest(F);
+			P1.printGraph(G);
+			cout << " end " << endl;*/
 		}
 	}
 	return 0;

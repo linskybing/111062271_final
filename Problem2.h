@@ -11,7 +11,6 @@ struct edgeList
 };
 
 struct Contain {
-    int id; // the id of tree
     vector<int> edges; // the index of the vertex
 };
 

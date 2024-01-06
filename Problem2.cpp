@@ -7,6 +7,7 @@
 
 #define bpair pair<int, int>
 #define btuple tuple<int, int, int>
+#define ID_SIZE int(1E5 + 1)
 #define INF 10000001
 class Problem2 {
 	public:
@@ -21,12 +22,9 @@ class Problem2 {
 		// sub function
 		void dijkstra(Tree &MTid, Metric& metric , int s, const int& t); // metric closure
 		bool steiner(Tree &MTid, Metric& metric, const int& t);
-		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t, const int& cid); // from mst add path to MTid
+		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t); // from mst add path to MTid
 		bool MST(Tree &MTid, Metric& metric, const int& t); // find MST from metric closure
-		int release(Tree& MTid, const int& bandw);//////
-		// get member variable
-		int getBandwith(const int& s, const int& id);
-		int getUsageIndex(const int s, const int& id);
+		void release(Tree& MTid);//
 
 		// output
 		void printTree(Tree &MTid);
@@ -39,8 +37,8 @@ class Problem2 {
 	private:
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
-		vector<vector<bpair>> bandwidth;
-		vector<vector<Contain>> usageEdge;
+		vector<int> bandwidth;
+		vector<Contain> usageEdge;
 		Graph t_G;
 		Forest t_F;
 };
@@ -61,34 +59,20 @@ Problem2::Problem2(Graph G) {
 		// sort the adjlist edge by cost
 		sort(adjList[i].begin(), adjList[i].end(), Compare);
 	}
-	bandwidth.reserve(size);
-	usageEdge.reserve(size);
+	bandwidth.reserve(ID_SIZE);
+	usageEdge.reserve(ID_SIZE);
 	t_G = G;
 }
 
 Problem2::~Problem2() {
 	for (int i = 0; i < size; i++) {
 		vector<edgeList>().swap(adjList[i]);
-		vector<bpair>().swap(bandwidth[i]);
-		vector<Contain>().swap(usageEdge[i]);
 	}
-	vector<vector<bpair>>().swap(bandwidth);
-	vector<vector<Contain>>().swap(usageEdge);
+
+	vector<int>().swap(bandwidth);
+	vector<Contain>().swap(usageEdge);
 	delete [] adjList;
 
-}
-
-int Problem2::getBandwith(const int& s,const int& id) {
-	for (int i = 0; i < bandwidth[s].size(); i++) {
-		if (bandwidth[s][i].first == id) return i;
-	}
-	return -1;
-}
-
-int Problem2::getUsageIndex(const int s, const int& id) {
-	int i;
-	for (i = 0; i < usageEdge[s].size() && usageEdge[s][i].id != id; i++);
-	return i;
 }
 
 void Problem2::dijkstra(Tree &MTid, Metric& metric , int s, const int& t) {
@@ -136,7 +120,6 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	}
 
 	int s = MTid.s-1;
-	int cid = getUsageIndex(s, MTid.id);
 
 	contain[s] = true;
 	int need = MTid.V.size() - 1;
@@ -159,7 +142,7 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 		contain[v] = true;
 		need--;
 
-		addPath(MTid, metric, contain_path, v1, v, t, cid);
+		addPath(MTid, metric, contain_path, v1, v, t);
 
 		for (auto u : MTid.V) {
 			u--;
@@ -176,17 +159,17 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	if (need){
 		MTid.E.clear();
 		MTid.ct = 0;
-		for (auto it : usageEdge[s][cid].edges) {
+		for (auto it : usageEdge[MTid.id].edges) {
 			t_G.E[it].b += t;
 		}
-		usageEdge[s][cid].edges.clear();
+		usageEdge[MTid.id].edges.clear();
 		return false;
 	};
 
 	return true; 
 }
 
-void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t, const int& cid) {
+void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t) {
 	int parent = d;
 	edgeList e;
 	vector<treeEdge> temp;
@@ -206,7 +189,7 @@ void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, 
 			MTid.ct += t_G.E[e.index].ce * t;
 
 			// record edge index
-			usageEdge[MTid.s-1][cid].edges.push_back(e.index);
+			usageEdge[MTid.id].edges.push_back(e.index);
 
 			contain[e.index] = true;
 		}
@@ -284,11 +267,10 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	s--;
 	
 	// store multicast tree cost
-	bandwidth[s].push_back(make_pair(id, t));
+	bandwidth[id] = t;
 
 	Contain t_c;
-	t_c.id = id;
-	usageEdge[s].push_back(t_c);
+	usageEdge[id] = t_c;
 
 	// build
 	bool result = steiner(t_MTid, metric, t);
@@ -305,17 +287,16 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	return result;
 }
 
-int Problem2::release(Tree& MTid, const int& bandw) {
-	int index = getUsageIndex(MTid.s-1, MTid.id);
-	for (int i = 0; i < usageEdge[MTid.s-1][index].edges.size(); i++) {
+void Problem2::release(Tree& MTid) {
+
+	for (int i = 0; i < usageEdge[MTid.id].edges.size(); i++) {
 		// release bandwith
-		t_G.E[usageEdge[MTid.s-1][index].edges[i]].b += bandw;
+		t_G.E[usageEdge[MTid.id].edges[i]].b += bandwidth[MTid.id];
 	}
 
 	MTid.ct = 0;
 	MTid.E.clear();
-	usageEdge[MTid.s-1][index].edges.clear();
-	return index;
+	usageEdge[MTid.id].edges.clear();
 }
 
 void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
@@ -330,13 +311,11 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 
 	// release resource
 	int s = t_F.trees[i].s-1;
-	int index = getBandwith(s, id);
-	int index2 = release(t_F.trees[i], bandwidth[s][index].second);
+
+	release(t_F.trees[i]);
 	t_F.trees[i].V.clear();
 
 	// remove tree
-	bandwidth[s].erase(bandwidth[s].begin() + index); // clean the multicast bandwith
-	usageEdge[s].erase(usageEdge[s].begin() + index2);
 	t_F.trees.erase(t_F.trees.begin() + i);
 	t_F.size--;
 	
@@ -348,7 +327,7 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 			s = t_F.trees[i].s -1;
 			id = t_F.trees[i].id;
 
-			int t = bandwidth[s][getBandwith(s, id)].second;
+			int t = bandwidth[id];
 			int penalty = t * (t_F.size - i) * (t_F.size - i);
 
 			pq.push({penalty, t , i});
@@ -395,7 +374,7 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 			s = t_F.trees[i].s -1;
 			id = t_F.trees[i].id;
 
-			int t = bandwidth[s][getBandwith(s, id)].second;
+			int t = bandwidth[id];
 			int penalty = t * (t_F.size - i) * (t_F.size - i);
 			pq.push({penalty, t , i});
 		}
@@ -474,14 +453,5 @@ void Problem2::printGraph(Graph G) {
 void Problem2::printForest(Forest &MTidForest) {
 	for (int i = 0; i < MTidForest.size; i++) {
 		printTree(MTidForest.trees[i]);
-	}
-}
-
-void Problem2::printBandwid() {
-	for (int i = 0; i < size; i++) {
-		std::cout << "vertex " << i+1 << ":\n";
-		for (auto it = bandwidth[i].begin(); it < bandwidth[i].end(); it++) {
-			std::cout << it->first << " " << it->second << "\n";
-		}
 	}
 }
