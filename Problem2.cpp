@@ -9,6 +9,7 @@
 #define btuple tuple<int, int, int>
 #define ID_SIZE int(1E5 + 1)
 #define INF 10000001
+
 class Problem2 {
 	public:
 		Problem2(Graph G);  //constructor
@@ -313,6 +314,7 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	int s = t_F.trees[i].s-1;
 
 	release(t_F.trees[i]);
+
 	t_F.trees[i].V.clear();
 
 	// remove tree

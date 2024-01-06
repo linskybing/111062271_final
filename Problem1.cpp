@@ -32,7 +32,6 @@ class Problem1 {
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
 		vector<Contain> contain; // MTid's bandwidth
 		vector<int> bandwidth;
-		
 		Graph t_G;
 		Forest t_F;
 };
@@ -249,14 +248,9 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 
 		int source = t_F.trees[i].s-1;
 
-		// count the number that has been in the tree (should be optimal)
-		int count = 0;
-		for (int i = 0; i < contain[id].vertex.size(); i++) {
-			if (contain[id].vertex[i] != -1) count++;
-		}
-		if (count == size) continue;
+		int need = size - (t_F.trees[i].E.size() + 1);
 
-		int need = size - count;
+		if (need) continue;
 
 		allocateAddiction(t_G, t_F.trees[i], source, need);
 	}
