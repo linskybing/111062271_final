@@ -6,6 +6,7 @@
 #include <algorithm>
 #define ID_SIZE int(1E5 + 1)
 #define INF 0x3f3f3f3f
+
 /* You can add more functions or variables in each class. 
    But you "Shall Not" delete any functions or variables that TAs defined. */
 
@@ -29,8 +30,9 @@ class Problem1 {
 	private:
 		int size;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
-		vector<Contain> contain; // key: id value: 1D array
+		vector<Contain> contain; // MTid's bandwidth
 		vector<int> bandwidth;
+		
 		Graph t_G;
 		Forest t_F;
 };
@@ -102,7 +104,7 @@ void Problem1::release(Graph& G, Tree& MTid) {
 	}
 
 	MTid.ct = 0;
-
+	MTid.E.clear();
 	return;
 }
 
@@ -111,19 +113,16 @@ void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& n
 	// initialize distance table
 	priority_queue<edgeList, vector<edgeList>, cmp> pq;
 
-	vector<int> key(MTid.V.size(), INF);
-
 	for (auto it = adjList[s].begin(); it < adjList[s].end(); it++) {
 		if (G.E[it->index].b >= t) {
-			key[it->dest-1] = it->cost;
 			pq.push(*it);
 		}
 	}
-
+	int i;
 	while (need && !pq.empty()) {
 		edgeList e = pq.top(); pq.pop();
 
-		int i = e.dest-1;
+		i = e.dest-1;
 		if (contain[MTid.id].vertex[i] != -1) continue;
 
 		addEdge(G, MTid, e);
@@ -131,11 +130,10 @@ void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& n
 		need--;
 
 		// adjoint edge check
-		vector<edgeList>::iterator it = adjList[i].begin();
-		for (; it < adjList[i].end(); it++) {
-			if (key[it->dest-1] > it->cost && it->dest-1 != s && contain[MTid.id].vertex[it->dest-1] == -1 && G.E[it->index].b >= t) {
-				key[it->dest-1] = it->cost;
-				pq.push(*it);
+		for (auto it : adjList[i]) {
+			int d  = it.dest-1;
+			if (d != s && contain[MTid.id].vertex[d] == -1 && G.E[it.index].b >= t) {
+				pq.push(it);
 			}
 		}
 	}
@@ -147,25 +145,26 @@ void Problem1::allocateAddiction(Graph& G, Tree& MTid, const int& s, int& need) 
 	// using prime's algorithm with priority queue
 
 	priority_queue<edgeList, vector<edgeList>, cmp> pq;
-	vector<int> key(MTid.V.size(), INF);
 
 	int bandw = bandwidth[MTid.id];
-
+	int d;
 	for (int i = 0; i < size; i++) {
 		if (contain[MTid.id].vertex[i] == -1) continue;
 		// push the edge of the adjoint node that the terminal node point at
-		for (auto it = adjList[i].begin(); it < adjList[i].end(); it++) {
-			if (G.E[it->index].b >= bandw && contain[MTid.id].vertex[it->dest-1] == -1 && key[it->dest-1] > it->cost) {
-				key[it->dest-1] = it->cost;
-				pq.push(*it);
+		for (auto it : adjList[i]) {
+			d = it.dest - 1;
+			if (G.E[it.index].b >= bandw && contain[MTid.id].vertex[d] == -1) {
+				pq.push(it);
 			}
 		}
 	}
-
+	int i;
 	while (need && !pq.empty()) {
-		edgeList e = pq.top(); pq.pop();
+		edgeList e = pq.top();
+		pq.pop();
 
-		int i = e.dest-1;
+		i = e.dest-1;
+
 		if (contain[MTid.id].vertex[i] != -1) continue;
 
 		addEdge(G, MTid, e);
@@ -173,11 +172,10 @@ void Problem1::allocateAddiction(Graph& G, Tree& MTid, const int& s, int& need) 
 		need--;
 
 		// adjoint edge check
-		vector<edgeList>::iterator it = adjList[i].begin();
-		for (; it < adjList[i].end(); it++) {
-			if (it->dest-1 != s && contain[MTid.id].vertex[it->dest-1] == -1 && G.E[it->index].b >= bandw && key[it->dest-1] > it->cost ) {
-				key[it->dest-1] = it->cost;
-				pq.push(*it);
+		for (auto it : adjList[i]) {
+			int d = it.cost-1;
+			if (d != s && contain[MTid.id].vertex[d] == -1 && G.E[it.index].b >= bandw) {
+				pq.push(it);
 			}
 		}
 	}
@@ -257,7 +255,9 @@ void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 			if (contain[id].vertex[i] != -1) count++;
 		}
 		if (count == size) continue;
+
 		int need = size - count;
+
 		allocateAddiction(t_G, t_F.trees[i], source, need);
 	}
 
@@ -286,7 +286,7 @@ void Problem1::rearrange(Graph &G, Forest &MTidForest) {
 		n = t_F.trees[i].V.size();
 		allocate(t_G, t_F.trees[i], s, t, n);
 	}
-	
+
 	G = t_G;
 	MTidForest = t_F;
 	return;

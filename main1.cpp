@@ -69,7 +69,6 @@ int stop_input(string input_string) {
 }
 
 int main(void) {
-
 	Graph G;
 	Tree T;
 	Forest F;
