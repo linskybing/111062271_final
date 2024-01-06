@@ -286,6 +286,7 @@ void Problem1::rearrange(Graph &G, Forest &MTidForest) {
 		n = t_F.trees[i].V.size();
 		allocate(t_G, t_F.trees[i], s, t, n);
 	}
+	
 	G = t_G;
 	MTidForest = t_F;
 	return;
