@@ -25,4 +25,30 @@ struct cmp {
     }
 };
 
+template <class T>
+class Node {
+    friend class Linklist;
+    private:
+        T* data;
+        Node<T>* next;
+    public:
+        Node(): data(nullptr), next(nullptr){};
+        Node(T datat): data(datat), next(nullptr){};
+};
+
+template <class T>
+class Linklist {
+    private:
+        Node<T>* head;
+        Node<T>* tail;
+        int size;
+    public:
+        Linklist(): head(nullptr), tail(nullptr), size(0) {};
+
+        void insert(T data) {
+            if (tail) {
+                Node<T> temp; 
+            }
+        }
+};
 #endif

@@ -98,8 +98,6 @@ int main(void) {
 		}
 		else if (input_string[0] == 'r') {
 			P2.rearrange(G, F);
-			P2.printForest(F);
-			P2.printGraph(G);
 		}
 	}
 	return 0;

@@ -339,15 +339,19 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	usageEdge[s].erase(usageEdge[s].begin() + index2);
 	t_F.trees.erase(t_F.trees.begin() + i);
 	t_F.size--;
+	
 	// find the most expensive cost that MTid has not yet been satisfied 
-	priority_queue<bpair, vector<bpair>, less<bpair>> pq;
+	priority_queue<btuple, vector<btuple>, less<btuple>> pq;
 
 	for (int i = 0; i < t_F.size; i++) {
 		if (t_F.trees[i].E.size() == 0) {
 			s = t_F.trees[i].s -1;
 			id = t_F.trees[i].id;
-			int j = getBandwith(s, id);
-			pq.push({bandwidth[t_F.trees[i].s-1][j].second , i});
+
+			int t = bandwidth[s][getBandwith(s, id)].second;
+			int penalty = t * (t_F.size - i) * (t_F.size - i);
+
+			pq.push({penalty, t , i});
 		}
 		else {
 			r_F.trees.push_back(t_F.trees[i]);
@@ -358,8 +362,8 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	// allocate resource
 	Metric metric;
 	while(!pq.empty()) {
-		int index = pq.top().second;
-		int t = pq.top().first;
+		int index = get<2>(pq.top());
+		int t = get<1>(pq.top());
 		pq.pop();
 
 		bool result = steiner(t_F.trees[index], metric, t);
@@ -381,32 +385,27 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 	/* Store your output graph and multicast tree forest into G and MTidForest
 	   Note: Please include "all" active mutlicast trees in MTidForest. */
 
-	// release all resouce
-	int s, id, t, n;
-	for (int i = 0; i < t_F.size; i++) {
-		s = t_F.trees[i].s-1;
-		id = t_F.trees[i].id;
-		t = bandwidth[s][getBandwith(s, id)].second;
-		release(t_F.trees[i], t);
-	}
+	// because steiner is better enough, so we just need to modify unsatisfied Multicast Tree
 
 	// find the most expensive cost that MTid has not yet been satisfied 
-	priority_queue<bpair, vector<bpair>, less<bpair>> pq;
-
+	priority_queue<btuple, vector<btuple>, less<btuple>> pq;
+	int s, id;
 	for (int i = 0; i < t_F.size; i++) {
 		if (t_F.trees[i].E.size() == 0) {
-			s = t_F.trees[i].s-1;
+			s = t_F.trees[i].s -1;
 			id = t_F.trees[i].id;
-			int j = getBandwith(s, id);
-			pq.push({bandwidth[t_F.trees[i].s-1][j].second , i});
+
+			int t = bandwidth[s][getBandwith(s, id)].second;
+			int penalty = t * (t_F.size - i) * (t_F.size - i);
+			pq.push({penalty, t , i});
 		}
 	}
 
 	// allocate resource
 	Metric metric;
 	while(!pq.empty()) {
-		int index = pq.top().second;
-		int t = pq.top().first;
+		int index = get<2>(pq.top());
+		int t = get<1>(pq.top());
 		pq.pop();
 		steiner(t_F.trees[index], metric, t);
 	}

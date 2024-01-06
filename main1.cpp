@@ -95,8 +95,6 @@ int main(void) {
 		}
 		else if (input_string[0] == 'r') {
 			P1.rearrange(G, F);
-			P1.printForest(F);
-			P1.printGraph(G);
 		}
 	}
 	return 0;
