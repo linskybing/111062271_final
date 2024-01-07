@@ -8,8 +8,8 @@
 #define bpair pair<int, int>
 #define btuple tuple<int, int, int>
 #define ID_SIZE int(1E5 + 1)
-#define STOP 10
-#define Congestion 15
+#define STOP 1
+#define Congestion 10
 #define INF 10000001
 
 class Problem2 {
@@ -39,13 +39,14 @@ class Problem2 {
 
 	private:
 		int size;
+		int permit;
 		int call;
 		int reject;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
 		vector<int> bandwidth;
 		vector<Contain> usageEdge;
-		vector<int> congestion_window;
 		vector<int> start;
+		vector<int> end;
 		Metric metric;
 		Graph t_G;
 		Forest t_F;
@@ -70,16 +71,32 @@ Problem2::Problem2(Graph G) {
 		sort(adjList[i].begin(), adjList[i].end(), Compare);
 		metric.distance[i] = new int[size];
 		metric.edges[i] = new edgeList[size];
-		congestion_window.push_back(0);
 	}
 	bandwidth.reserve(ID_SIZE);
 	usageEdge.reserve(ID_SIZE);
 	start.reserve(ID_SIZE);
+	end.reserve(ID_SIZE);
 	t_G = G;
+	permit = 0;
 	call = 0;
 }
 
 Problem2::~Problem2() {
+	unsigned long long sum = 0;
+	for (auto e : t_F.trees) {
+		if (e.E.size() == 0) {
+			if (end[e.id]) {
+				sum += bandwidth[e.id] * (end[e.id] - start[e.id]) * (end[e.id] - start[e.id]);
+			}
+			else {
+				sum += bandwidth[e.id] * (call - start[e.id]) * (call - start[e.id]);
+			}
+			
+		}
+	}
+	cout << "total penalty = " <<sum << endl;
+	cout << "reject = " << reject << endl;
+	cout << "permit = " << permit << endl;
 	for (int i = 0; i < size; i++) {
 		vector<edgeList>().swap(adjList[i]);
 		delete [] metric.distance[i];
@@ -87,8 +104,6 @@ Problem2::~Problem2() {
 	}
 
 	vector<int>().swap(bandwidth);
-	vector<int>().swap(start);
-	vector<int>().swap(congestion_window);
 	vector<Contain>().swap(usageEdge);
 	delete [] metric.distance;
 	delete [] metric.edges;
@@ -269,10 +284,9 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	usageEdge[id] = t_c;
 
 	start[id] = call + 1;
-
 	// build
 	bool result = false;
-	if (congestion_window[s] < Congestion) {
+	if (reject < Congestion) {
 		result = steiner(t_MTid);
 	}
 	
@@ -281,9 +295,10 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 
 	if (result) {
 		MTid = t_MTid;
+		permit++;
 	}
 	else {
-		congestion_window[s]++;
+		reject++;
 
 	}
 
@@ -302,7 +317,6 @@ void Problem2::release(Tree& MTid) {
 
 	MTid.ct = 0;
 	MTid.E.clear();
-	//usageEdge[MTid.id].edges.clear();
 }
 
 void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
@@ -326,37 +340,19 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	t_F.trees.erase(t_F.trees.begin() + i);
 	t_F.size--;
 	
-	// find the most expensive cost that MTid has not yet been satisfied 
-	vector<btuple> list;
-	int tid, t, penalty;
-	for (int i = 0; i < t_F.size; i++) {
-		if (t_F.trees[i].E.size() == 0) {
-			s = t_F.trees[i].s -1;
-			tid = t_F.trees[i].id;
-			t = bandwidth[tid];
-			penalty = t * (call - start[tid]) * (call - start[tid]);
-
-			list.push_back({penalty, t , i});
+	int count = 0;
+	for (auto e : t_F.trees) {
+		if (e.E.size() == 0) {
+			if(steiner(e)) {
+				reject--;
+				permit++;
+				end[e.id] = call - 1;
+			}
+			count++;
 		}
-	}
 
-	sort(list.begin(), list.end(), greater<btuple>());
-	cout << list.size() << endl;
-
-	// allocate resource
-	for (auto e : list) {
-		if (steiner(t_F.trees[get<2>(e)])) congestion_window[t_F.trees[get<2>(e)].s-1]--;
+		if(count == STOP) break;
 	}
-	
-	/*int index;
-	for (index = 0; index < list.size(); index++) {
-		if (index == STOP) break;
-		if (steiner(t_F.trees[get<2>(list[index])])) congestion_window[t_F.trees[get<2>(list[index])].s-1]--;
-	}
-	for (index = list.size()-1; index >= 0; index--) {
-		if (index == list.size()- 1 -STOP) break;
-		if (steiner(t_F.trees[get<2>(list[index])])) congestion_window[t_F.trees[get<2>(list[index])].s-1]--;
-	}*/
 
 	// return Forest 
 	for (auto e : t_F.trees) {
@@ -368,7 +364,6 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 
 	MTidForest = r_F;
 	G = t_G;
-
 	call++;
 	return;
 }
@@ -392,7 +387,6 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 
 	G = t_G;
 	MTidForest = r_F;
-
 	call++;
 	return;
 }
