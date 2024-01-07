@@ -85,12 +85,12 @@ int main(void) {
             bool take;
 			insert_input(id, s, t, D, input_string);
 			take = P2.insert(id, s, D, t, G, T);
-			/*cout << "insert" << endl;
-			if(take) {
-				P2.printTree(T);				
-			}
-			P2.printGraph(G);
-			cout << " end " << endl;*/
+			/*if(take) {
+				cout << "insert" << endl;
+				P2.printTree(T);
+				P2.printGraph(G);		
+				cout << " end " << endl;		
+			}*/
 		}
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);

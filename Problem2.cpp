@@ -8,6 +8,8 @@
 #define bpair pair<int, int>
 #define btuple tuple<int, int, int>
 #define ID_SIZE int(1E5 + 1)
+#define STOP 10
+#define Congestion 20
 #define INF 10000001
 
 class Problem2 {
@@ -21,10 +23,10 @@ class Problem2 {
 		void rearrange(Graph &G, Forest &MTidForest);
 
 		// sub function
-		void dijkstra(Tree &MTid, Metric& metric , int s, const int& t); // metric closure
-		bool steiner(Tree &MTid, Metric& metric, const int& t);
-		void addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t); // from mst add path to MTid
-		bool MST(Tree &MTid, Metric& metric, const int& t); // find MST from metric closure
+		bool dijkstra(Tree &MTid, int s); // metric closure
+		bool steiner(Tree &MTid);
+		void addPath(Tree &MTid, bool* contain, const int& s, const int& d); // from mst add path to MTid
+		bool MST(Tree &MTid); // find MST from metric closure
 		void release(Tree& MTid);//
 
 		// output
@@ -33,13 +35,17 @@ class Problem2 {
 		void printGraph(Graph G); // print the Graph
 		void printForest(Forest &MTidForest); // print all of the MTid
 		void printBandwid();
-		void printShortest(Tree &MTid, Metric& metric);
+		void printShortest(Tree &MTid);
 
 	private:
 		int size;
+		int call;
+		int reject;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
 		vector<int> bandwidth;
 		vector<Contain> usageEdge;
+		vector<int> start;
+		Metric metric;
 		Graph t_G;
 		Forest t_F;
 };
@@ -47,6 +53,8 @@ class Problem2 {
 Problem2::Problem2(Graph G) {
 	adjList = new vector<edgeList>[G.V.size()];
 	size = G.V.size();
+	metric.distance = new int*[size];
+	metric.edges = new edgeList*[size];
 
 	for (int i = 0; i < G.E.size(); i++) {
 		// undirected graph
@@ -59,24 +67,32 @@ Problem2::Problem2(Graph G) {
 	for (int i = 0; i < G.V.size(); i++) {
 		// sort the adjlist edge by cost
 		sort(adjList[i].begin(), adjList[i].end(), Compare);
+		metric.distance[i] = new int[size];
+		metric.edges[i] = new edgeList[size];
 	}
 	bandwidth.reserve(ID_SIZE);
 	usageEdge.reserve(ID_SIZE);
+	start.reserve(ID_SIZE);
 	t_G = G;
+	call = 0;
 }
 
 Problem2::~Problem2() {
 	for (int i = 0; i < size; i++) {
 		vector<edgeList>().swap(adjList[i]);
+		delete [] metric.distance[i];
+		delete [] metric.edges[i];
 	}
 
 	vector<int>().swap(bandwidth);
+	vector<int>().swap(start);
 	vector<Contain>().swap(usageEdge);
+	delete [] metric.distance;
+	delete [] metric.edges;
 	delete [] adjList;
-
 }
 
-void Problem2::dijkstra(Tree &MTid, Metric& metric , int s, const int& t) {
+bool Problem2::dijkstra(Tree &MTid, int s) {
 	priority_queue<bpair, vector<bpair>, greater<bpair>> pq;
 
 	s--;
@@ -94,7 +110,7 @@ void Problem2::dijkstra(Tree &MTid, Metric& metric , int s, const int& t) {
 
 		for (auto edge : adjList[u]) {
 			int v = edge.dest-1;
-			if (u != v && dist_u + edge.cost < metric.distance[s][v] && t_G.E[edge.index].b >= t) {
+			if (u != v && dist_u + edge.cost < metric.distance[s][v] && t_G.E[edge.index].b >= bandwidth[MTid.id]) {
 				metric.distance[s][v] = dist_u + edge.cost;
 				metric.edges[s][v] = edge;
 
@@ -102,9 +118,14 @@ void Problem2::dijkstra(Tree &MTid, Metric& metric , int s, const int& t) {
 			}
 		}
 	}
+
+	for (auto v : MTid.V) {
+		if (metric.distance[s][v-1] == INF) return false;
+	}
+	return true;
 }
 
-bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
+bool Problem2::MST(Tree &MTid) {
 	// using prime's algorithm
 	bool* contain = new bool[size];
 	bool* contain_path = new bool[t_G.E.size()];
@@ -143,7 +164,7 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 		contain[v] = true;
 		need--;
 
-		addPath(MTid, metric, contain_path, v1, v, t);
+		addPath(MTid, contain_path, v1, v);
 
 		for (auto u : MTid.V) {
 			u--;
@@ -156,21 +177,10 @@ bool Problem2::MST(Tree &MTid, Metric& metric, const int& t) {
 	// free memonry
 	delete [] contain;
 	delete [] contain_path;
-
-	if (need){
-		MTid.E.clear();
-		MTid.ct = 0;
-		for (auto it : usageEdge[MTid.id].edges) {
-			t_G.E[it].b += t;
-		}
-		usageEdge[MTid.id].edges.clear();
-		return false;
-	};
-
 	return true; 
 }
 
-void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, const int& d, const int& t) {
+void Problem2::addPath(Tree &MTid, bool* contain, const int& s, const int& d) {
 	int parent = d;
 	edgeList e;
 	vector<treeEdge> temp;
@@ -186,8 +196,8 @@ void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, 
 			temp.push_back({parent+1, e.dest});
 
 			// update graph
-			t_G.E[e.index].b -= t;
-			MTid.ct += t_G.E[e.index].ce * t;
+			t_G.E[e.index].b -= bandwidth[MTid.id];
+			MTid.ct += t_G.E[e.index].ce * bandwidth[MTid.id];
 
 			// record edge index
 			usageEdge[MTid.id].edges.push_back(e.index);
@@ -203,38 +213,20 @@ void Problem2::addPath(Tree &MTid, Metric& metric, bool* contain, const int& s, 
 	return;
 }
 
-bool Problem2::steiner(Tree &MTid, Metric& metric, const int& t) {
-
-	// initilize
-	metric.distance = new int*[size];
-	metric.edges = new edgeList*[size];
-
-	for (int i = 0; i < size; i++) {
-		metric.distance[i] = new int[size];
-		metric.edges[i] = new edgeList[size];
-	}
+bool Problem2::steiner(Tree &MTid) {
 
 	// find all shortestPath
 	for (auto i : MTid.V) {
-		dijkstra(MTid, metric, i, t);
+		if (!dijkstra(MTid, i)) return false;
 	}
 
 	// using the MST to construct path
-	bool result =  MST(MTid, metric, t);
+	MST(MTid);
 
-	// free memonry
-	for (int i = 0; i < size; i++) {
-		delete [] metric.distance[i];
-		delete [] metric.edges[i];
-	}
-
-	delete [] metric.distance;
-	delete [] metric.edges;
-
-	return result;
+	return true;
 }
 
-void Problem2::printShortest(Tree &MTid, Metric& metric) {
+void Problem2::printShortest(Tree &MTid) {
 
 	for (auto i : MTid.V) {
 		i--;
@@ -273,17 +265,26 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	Contain t_c;
 	usageEdge[id] = t_c;
 
+	start[id] = call + 1;
+
 	// build
-	bool result = steiner(t_MTid, metric, t);
+	bool result = false;
+	if (reject < Congestion) {
+		result = steiner(t_MTid);
+	}
+	
 	t_F.trees.push_back(t_MTid);
 	t_F.size++;
 
 	if (result) {
 		MTid = t_MTid;
 	}
+	else {
+		reject++;
+	}
 
 	G = t_G;
-
+	call++;
 	/* You should return true or false according the insertion result */
 	return result;
 }
@@ -297,7 +298,7 @@ void Problem2::release(Tree& MTid) {
 
 	MTid.ct = 0;
 	MTid.E.clear();
-	usageEdge[MTid.id].edges.clear();
+	//usageEdge[MTid.id].edges.clear();
 }
 
 void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
@@ -315,50 +316,52 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 
 	release(t_F.trees[i]);
 
-	t_F.trees[i].V.clear();
+	//t_F.trees[i].V.clear();
 
 	// remove tree
 	t_F.trees.erase(t_F.trees.begin() + i);
 	t_F.size--;
 	
 	// find the most expensive cost that MTid has not yet been satisfied 
-	priority_queue<btuple, vector<btuple>, less<btuple>> pq;
-
+	vector<btuple> list;
+	int tid, t, penalty;
 	for (int i = 0; i < t_F.size; i++) {
 		if (t_F.trees[i].E.size() == 0) {
 			s = t_F.trees[i].s -1;
-			id = t_F.trees[i].id;
+			tid = t_F.trees[i].id;
+			t = bandwidth[tid];
+			penalty = t * (call - start[tid]) * (call - start[tid]);
 
-			int t = bandwidth[id];
-			int penalty = t * (t_F.size - i) * (t_F.size - i);
-
-			pq.push({penalty, t , i});
-		}
-		else {
-			r_F.trees.push_back(t_F.trees[i]);
-			r_F.size++;
+			list.push_back({penalty, t , i});
 		}
 	}
 
+	sort(list.begin(), list.end(), greater<btuple>());
+	cout << list.size() << endl;
+
 	// allocate resource
-	Metric metric;
-	while(!pq.empty()) {
-		int index = get<2>(pq.top());
-		int t = get<1>(pq.top());
-		pq.pop();
+	int index;
+	for (index = 0; index < list.size(); index++) {
+		if (index == STOP) break;
+		if (steiner(t_F.trees[get<2>(list[index])])) reject--;
+	}
+	for (index = list.size()-1; index >= 0; index--) {
+		if (index == list.size()- 1 -STOP) break;
+		if (steiner(t_F.trees[get<2>(list[index])])) reject--;
+	}
 
-		bool result = steiner(t_F.trees[index], metric, t);
-
-		if (result){
-			int i = 0;
-			for (; i < r_F.size && t_F.trees[index].id > r_F.trees[i].id; i++);
-			r_F.trees.insert(r_F.trees.begin() + i, t_F.trees[index]);
+	// return Forest 
+	for (auto e : t_F.trees) {
+		if (e.E.size() != 0) {
+			r_F.trees.push_back(e);
 			r_F.size++;
 		}
 	}
 
 	MTidForest = r_F;
 	G = t_G;
+
+	call++;
 	return;
 }
 
@@ -366,42 +369,23 @@ void Problem2::rearrange(Graph &G, Forest &MTidForest) {
 	/* Store your output graph and multicast tree forest into G and MTidForest
 	   Note: Please include "all" active mutlicast trees in MTidForest. */
 
-	// because steiner is better enough, so we just need to modify unsatisfied Multicast Tree
-
-	// find the most expensive cost that MTid has not yet been satisfied 
-	priority_queue<btuple, vector<btuple>, less<btuple>> pq;
-	int s, id;
-	for (int i = 0; i < t_F.size; i++) {
-		if (t_F.trees[i].E.size() == 0) {
-			s = t_F.trees[i].s -1;
-			id = t_F.trees[i].id;
-
-			int t = bandwidth[id];
-			int penalty = t * (t_F.size - i) * (t_F.size - i);
-			pq.push({penalty, t , i});
-		}
-	}
-
-	// allocate resource
-	Metric metric;
-	while(!pq.empty()) {
-		int index = get<2>(pq.top());
-		int t = get<1>(pq.top());
-		pq.pop();
-		steiner(t_F.trees[index], metric, t);
-	}
-
+	// because steiner is better enough, so we just need to return Multicast Tree
+	// before rearrange stop has already try to satisfy any number of the tree, so rearrange would not modify any tree
+	// due to no resource release
 	// return Forest 
 	Forest r_F;
-	for (int i = 0; i < t_F.trees.size(); i++) {
-		if (t_F.trees[i].E.size() != 0) {
-			r_F.trees.push_back(t_F.trees[i]);
+
+	for (auto e : t_F.trees) {
+		if (e.E.size() != 0) {
+			r_F.trees.push_back(e);
 			r_F.size++;
 		}
 	}
 
 	G = t_G;
 	MTidForest = r_F;
+
+	call++;
 	return;
 }
 
