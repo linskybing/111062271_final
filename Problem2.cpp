@@ -344,7 +344,11 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	cout << list.size() << endl;
 
 	// allocate resource
-	int index;
+	for (auto e : list) {
+		if (steiner(t_F.trees[get<2>(e)])) congestion_window[t_F.trees[get<2>(e)].s-1]--;
+	}
+	
+	/*int index;
 	for (index = 0; index < list.size(); index++) {
 		if (index == STOP) break;
 		if (steiner(t_F.trees[get<2>(list[index])])) congestion_window[t_F.trees[get<2>(list[index])].s-1]--;
@@ -352,7 +356,7 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	for (index = list.size()-1; index >= 0; index--) {
 		if (index == list.size()- 1 -STOP) break;
 		if (steiner(t_F.trees[get<2>(list[index])])) congestion_window[t_F.trees[get<2>(list[index])].s-1]--;
-	}
+	}*/
 
 	// return Forest 
 	for (auto e : t_F.trees) {
