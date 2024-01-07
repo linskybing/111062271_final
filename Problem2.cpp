@@ -9,7 +9,7 @@
 #define btuple tuple<int, int, int>
 #define ID_SIZE int(1E5 + 1)
 #define STOP 10
-#define Congestion 20
+#define Congestion 15
 #define INF 10000001
 
 class Problem2 {
@@ -44,6 +44,7 @@ class Problem2 {
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
 		vector<int> bandwidth;
 		vector<Contain> usageEdge;
+		vector<int> congestion_window;
 		vector<int> start;
 		Metric metric;
 		Graph t_G;
@@ -69,6 +70,7 @@ Problem2::Problem2(Graph G) {
 		sort(adjList[i].begin(), adjList[i].end(), Compare);
 		metric.distance[i] = new int[size];
 		metric.edges[i] = new edgeList[size];
+		congestion_window.push_back(0);
 	}
 	bandwidth.reserve(ID_SIZE);
 	usageEdge.reserve(ID_SIZE);
@@ -86,6 +88,7 @@ Problem2::~Problem2() {
 
 	vector<int>().swap(bandwidth);
 	vector<int>().swap(start);
+	vector<int>().swap(congestion_window);
 	vector<Contain>().swap(usageEdge);
 	delete [] metric.distance;
 	delete [] metric.edges;
@@ -269,7 +272,7 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 
 	// build
 	bool result = false;
-	if (reject < Congestion) {
+	if (congestion_window[s] < Congestion) {
 		result = steiner(t_MTid);
 	}
 	
@@ -280,7 +283,8 @@ bool Problem2::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 		MTid = t_MTid;
 	}
 	else {
-		reject++;
+		congestion_window[s]++;
+
 	}
 
 	G = t_G;
@@ -343,11 +347,11 @@ void Problem2::stop(int id, Graph &G, Forest &MTidForest) {
 	int index;
 	for (index = 0; index < list.size(); index++) {
 		if (index == STOP) break;
-		if (steiner(t_F.trees[get<2>(list[index])])) reject--;
+		if (steiner(t_F.trees[get<2>(list[index])])) congestion_window[t_F.trees[get<2>(list[index])].s-1]--;
 	}
 	for (index = list.size()-1; index >= 0; index--) {
 		if (index == list.size()- 1 -STOP) break;
-		if (steiner(t_F.trees[get<2>(list[index])])) reject--;
+		if (steiner(t_F.trees[get<2>(list[index])])) congestion_window[t_F.trees[get<2>(list[index])].s-1]--;
 	}
 
 	// return Forest 
