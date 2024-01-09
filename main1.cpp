@@ -83,20 +83,22 @@ int main(void) {
 			Set D;
 			insert_input(id, s, t, D, input_string);
 			P1.insert(id, s, D, t, G, T);
-			/*P1.printTree(T);
-			P1.printGraph(G);*/
+			/*cout << "\ninsert" << endl;
+			P1.printTree(T);
+			P1.printGraph(G);
+			cout << " end " << endl;*/
 		}
 		else if (input_string[0] == 's') {
 			int id = stop_input(input_string);
 			P1.stop(id, G, F);
-			/*cout << "stop" << endl;
+			/*cout << "\nstop" << endl;
 			P1.printForest(F);
 			P1.printGraph(G);
 			cout << " end " << endl;*/
 		}
 		else if (input_string[0] == 'r') {
 			P1.rearrange(G, F);
-			/*cout << "rearrange" << endl;
+			/*cout << "\nrearrange" << endl;
 			P1.printForest(F);
 			P1.printGraph(G);
 			cout << " end " << endl;*/

@@ -2,9 +2,10 @@
 #include "Problem1.h"
 #include <iostream>
 #include <queue>
+#include <map>
 #include <utility>
 #include <algorithm>
-#define ID_SIZE int(1E5 + 1)
+
 #define INF 0x3f3f3f3f
 
 /* You can add more functions or variables in each class. 
@@ -29,11 +30,10 @@ class Problem1 {
 		void printForest(Forest F); // print all of the MTid
 	private:
 		int size;
+		int flag;
 		vector<edgeList>* adjList; // sort the graph edge with bandwithcost;
-		vector<Contain> contain; // MTid's bandwidth
-		vector<int> bandwidth;
+		map<int, MyTree> trees;
 		Graph t_G;
-		Forest t_F;
 };
 
 Problem1::Problem1(Graph G) {
@@ -51,10 +51,8 @@ Problem1::Problem1(Graph G) {
 		// sort the adjlist edge by cost
 		sort(adjList[i].begin(), adjList[i].end(), Compare);
 	}
-	contain.reserve(ID_SIZE);
-	bandwidth.reserve(ID_SIZE);
-
 	t_G = G;
+	flag = true;
 }
 
 Problem1::~Problem1() {
@@ -62,16 +60,13 @@ Problem1::~Problem1() {
 	for (int i = 0; i < size; i++) {
 		vector<edgeList>().swap(adjList[i]);
 	}
-
 	delete [] adjList;
-	vector<Contain>().swap(contain);
-	vector<int>().swap(bandwidth);
 }
 
 void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e) {
 
 	// record index
-	contain[MTid.id].vertex[e.dest-1] = e.index;
+	trees[MTid.id].usage.vertex[e.dest-1] = e.index;
 
 	treeEdge te;
 	if (e.dest == G.E[e.index].vertex[0]) {
@@ -85,23 +80,22 @@ void Problem1::addEdge(Graph& G, Tree& MTid , edgeList e) {
 
 	//add the edge to tree
 	MTid.E.push_back(te);
-	MTid.ct += e.cost * bandwidth[MTid.id];
+	MTid.ct += e.cost * trees[MTid.id].t;
 	// update bandwith
-	G.E[e.index].b -= bandwidth[MTid.id];
+	G.E[e.index].b -= trees[MTid.id].t;
 
 	return;
 }
 
 void Problem1::release(Graph& G, Tree& MTid) {
-	int index;
-	for (auto it = MTid.E.begin(); it < MTid.E.end(); it++) {
-		// release bandwith		
-		G.E[contain[MTid.id].vertex[it->vertex[1]-1]].b += bandwidth[MTid.id];
+
+	for (auto& e : MTid.E) {
+		// release bandwith	
+		G.E[trees[MTid.id].usage.vertex[e.vertex[1]-1]].b += trees[MTid.id].t;
 
 		// clean tree information
-		contain[MTid.id].vertex[it->vertex[1]-1] = -1;
+		trees[MTid.id].usage.vertex[e.vertex[1]-1] = -1;
 	}
-
 	MTid.ct = 0;
 	MTid.E.clear();
 	return;
@@ -117,12 +111,13 @@ void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& n
 			pq.push(*it);
 		}
 	}
+
 	int i;
 	while (need && !pq.empty()) {
 		edgeList e = pq.top(); pq.pop();
 
 		i = e.dest-1;
-		if (contain[MTid.id].vertex[i] != -1) continue;
+		if (trees[MTid.id].usage.vertex[i] != -1) continue;
 
 		addEdge(G, MTid, e);
 
@@ -131,7 +126,7 @@ void Problem1::allocate(Graph& G, Tree& MTid, const int& s, const int& t, int& n
 		// adjoint edge check
 		for (auto it : adjList[i]) {
 			int d  = it.dest-1;
-			if (d != s && contain[MTid.id].vertex[d] == -1 && G.E[it.index].b >= t) {
+			if (d != s && trees[MTid.id].usage.vertex[d] == -1 && G.E[it.index].b >= t) {
 				pq.push(it);
 			}
 		}
@@ -145,14 +140,13 @@ void Problem1::allocateAddiction(Graph& G, Tree& MTid, const int& s, int& need) 
 
 	priority_queue<edgeList, vector<edgeList>, cmp> pq;
 
-	int bandw = bandwidth[MTid.id];
 	int d;
 	for (int i = 0; i < size; i++) {
-		if (contain[MTid.id].vertex[i] == -1) continue;
+		if (trees[MTid.id].usage.vertex[i] == -1) continue;
 		// push the edge of the adjoint node that the terminal node point at
 		for (auto it : adjList[i]) {
 			d = it.dest - 1;
-			if (G.E[it.index].b >= bandw && contain[MTid.id].vertex[d] == -1) {
+			if (G.E[it.index].b >= trees[MTid.id].t && trees[MTid.id].usage.vertex[d] == -1) {
 				pq.push(it);
 			}
 		}
@@ -164,16 +158,15 @@ void Problem1::allocateAddiction(Graph& G, Tree& MTid, const int& s, int& need) 
 
 		i = e.dest-1;
 
-		if (contain[MTid.id].vertex[i] != -1) continue;
+		if (trees[MTid.id].usage.vertex[i] != -1) continue;
 
 		addEdge(G, MTid, e);
 
 		need--;
-
 		// adjoint edge check
 		for (auto it : adjList[i]) {
-			int d = it.cost-1;
-			if (d != s && contain[MTid.id].vertex[d] == -1 && G.E[it.index].b >= bandw) {
+			int d = it.dest-1;
+			if (d != s && trees[MTid.id].usage.vertex[d] == -1 && G.E[it.index].b >= trees[MTid.id].t) {
 				pq.push(it);
 			}
 		}
@@ -196,93 +189,95 @@ void Problem1::insert(int id, int s, Set D, int t, Graph &G, Tree &MTid) {
 	int n = D.size - 1; // how many the number of edge needed
 	s--;
 
-	// store multicast tree cost
-	bandwidth[id] = t;
-
+	// record the edge index
 	Contain t_c;
 	for (int i = 0; i < size; i++) {
 		t_c.vertex.push_back(-1);
 	}
 	t_c.vertex[s] = -2;
 	
-	contain[id] = t_c;
+	trees[id] = {temp, t_c, t};
 
 	// allocate resource
-	allocate(t_G, temp, s, t, n);
+	allocate(t_G, trees[id].MTid, s, t, n);
 
 	
-	MTid = temp;
+	MTid = trees[id].MTid;
 
 	G = t_G;
-	t_F.trees.push_back(temp);
-	t_F.size++;
-
+	flag = true;
 	return;
 }
 
 void Problem1::stop(int id, Graph &G, Forest &MTidForest) {
 	/* Store your output graph and multicast tree forest into G and MTidForest
 	   Note: Please "only" include mutlicast trees that you added nodes in MTidForest. */
-	
-	// find the multicast tree index
-	int i = 0;
-	for (; i < t_F.size && t_F.trees[i].id != id; i++);
-	
-	if (i == t_F.size) return;
+	Forest F;
 
 	// release resource
-	int s = t_F.trees[i].s-1;
+	int s = trees[id].MTid.s-1;
 
-	release(t_G, t_F.trees[i]);
-
-	t_F.trees[i].V.clear();
+	release(t_G, trees[id].MTid);
 
 	// remove tree
-	t_F.trees.erase(t_F.trees.begin() + i);
-	t_F.size--;
+	trees.erase(id);
 
 	// add more node to other multicast tree
-	for (int i = 0; i < t_F.size; i++) {
+	for (auto& m : trees) {
+		
+		int id = m.second.MTid.id;
 
-		int id = t_F.trees[i].id;
+		int s =  m.second.MTid.s-1;
 
-		int source = t_F.trees[i].s-1;
+		int need = m.second.MTid.V.size() - (m.second.MTid.E.size() + 1);
+		
+		if (!need) {
+			F.trees.push_back(m.second.MTid);
+			F.size++;
+			continue;
+		}
 
-		int need = size - (t_F.trees[i].E.size() + 1);
+		allocateAddiction(t_G, m.second.MTid, s, need);
 
-		if (need) continue;
-
-		allocateAddiction(t_G, t_F.trees[i], source, need);
+		if (m.second.MTid.E.size()) {
+			F.trees.push_back(m.second.MTid);
+			F.size++;
+		}
 	}
 
-	MTidForest = t_F;
+	MTidForest = F;
 	G = t_G;
+	flag = true;
 	return;
 }
 
 void Problem1::rearrange(Graph &G, Forest &MTidForest) {
 	/* Store your output graph and multicast tree forest into G and MTidForest
 	   Note: Please include "all" active mutlicast trees in MTidForest. */
-
+	Forest F;
 	// release all resouce
 	int s, id, t, n;
-	for (int i = 0; i < t_F.size; i++) {
-		s = t_F.trees[i].s-1;
-		id = t_F.trees[i].id;
-		t = bandwidth[id];
-		release(t_G, t_F.trees[i]);
+	if (flag) {
+		for (auto& m : trees) {
+			release(t_G, m.second.MTid);
+		}
 	}
 
-	for (int i = 0; i < t_F.size; i++) {
-		s = t_F.trees[i].s-1;
-		id = t_F.trees[i].id;
-		t = bandwidth[id];
-		n = t_F.trees[i].V.size();
-		allocate(t_G, t_F.trees[i], s, t, n);
+	for (auto& m : trees) {
+		if (flag) {
+			s = m.second.MTid.s - 1;
+			t = m.second.t;
+			n = m.second.MTid.V.size() - m.second.MTid.E.size();
+			allocate(t_G, m.second.MTid, s, t, n);
+		}
+
+		F.trees.push_back(m.second.MTid);
+		F.size++;
 	}
 
 	G = t_G;
-	MTidForest = t_F;
+	MTidForest = F;
+	flag = false;
 	return;
 }
 

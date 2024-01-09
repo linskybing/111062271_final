@@ -23,4 +23,12 @@ struct cmp {
         return left.cost > right.cost;
     }
 };
+
+struct MyTree
+{
+    Tree MTid;
+    Contain usage;
+    int t;
+};
+
 #endif

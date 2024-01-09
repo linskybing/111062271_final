@@ -1,3 +1,0 @@
-total penalty = 170115
-reject = 41082
-permit = 7026
